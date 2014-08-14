@@ -58,6 +58,7 @@
     <Compile Include="LowLevel\BTree.Enumerate.cs" />
     <Compile Include="Transaction.cs" />
     <Compile Include="IO\Pager.cs" />
+    <Compile Include="Utils\DeleteOnCloseFileStream.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

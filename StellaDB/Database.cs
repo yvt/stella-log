@@ -2,19 +2,108 @@ using System;
 
 namespace Yavit.StellaDB
 {
-	public class Database
+	public enum JournalingMode {
+		None = 0,
+		Memory,
+		File
+	}
+
+	public class Database: IDisposable
 	{
 		Transaction currentTransaction = null;
 		LowLevel.LowLevelDatabase lldb;
 
-		public Database ()
+		readonly System.IO.Stream dbStream;
+		readonly System.IO.Stream journalStream;
+		readonly bool closeOnDispose;
+
+		public Database (System.IO.Stream dbStream, System.IO.Stream journalStream,
+			bool closeOnDispose)
 		{
-			throw new NotImplementedException ();
+			if (dbStream == null)
+				throw new ArgumentNullException ("dbStream");
+
+			if (!dbStream.CanRead)
+				throw new ArgumentException ("Database stream must be readable.");
+			if (!dbStream.CanWrite)
+				throw new ArgumentException ("Database stream must be writable.");
+			if (!dbStream.CanSeek)
+				throw new ArgumentException ("Database stream must be seekable.");
+			if (journalStream != null) {
+				if (!journalStream.CanRead)
+					throw new ArgumentException ("Journal stream must be readable.");
+				if (!journalStream.CanWrite)
+					throw new ArgumentException ("Journal stream must be writable.");
+				if (!journalStream.CanSeek)
+					throw new ArgumentException ("Journal stream must be seekable.");
+			}
+
+			this.journalStream = journalStream;
+			this.dbStream = dbStream;
+			this.closeOnDispose = closeOnDispose;
+
+			OpenDatabase ();
+		}
+
+		public void Dispose ()
+		{
+			if (currentTransaction != null) {
+				currentTransaction.Rollback ();
+			}
+
+			if (closeOnDispose) {
+				dbStream.Dispose ();
+				journalStream.Dispose ();
+			}
+		}
+
+		public static Database OpenFile(string path, JournalingMode journalMode = JournalingMode.File)
+		{
+			if (path == null)
+				throw new ArgumentNullException ("path");
+
+			System.IO.Stream dbStream = null, jStream = null;
+			try {
+				dbStream = System.IO.File.Open(path, System.IO.FileMode.OpenOrCreate,
+					System.IO.FileAccess.ReadWrite, System.IO.FileShare.Read);
+				switch (journalMode) {
+				case JournalingMode.None: jStream = null; break;
+				case JournalingMode.Memory:
+					jStream = new System.IO.MemoryStream();
+					break;
+				case JournalingMode.File:
+					jStream = new Utils.DeleteOnCloseFileStream(path + ".jourallog");
+					break;
+				default:
+					throw new ArgumentException("journalMode");
+				}
+				return new Database(dbStream, jStream, true);
+			} catch {
+				if (dbStream != null)
+					dbStream.Close ();
+				if (jStream != null)
+					jStream.Close ();
+				throw;
+			}
+		}
+
+		public static Database CreateMemoryDatabase()
+		{
+			return new Database (new System.IO.MemoryStream(),
+				new System.IO.MemoryStream(), true);
 		}
 
 		void OpenDatabase()
 		{
-			throw new NotImplementedException ();
+			var storage = new IO.BlockFile (dbStream);
+			var param = new LowLevel.LowLevelDatabaseParameters ();
+			param.NumCachedBlocks = 512;
+			if (journalStream != null) {
+				var wal = new IO.WalBlockFile (storage, journalStream);
+				lldb = new LowLevel.LowLevelDatabase (wal, param);
+			} else {
+				lldb = new LowLevel.LowLevelDatabase (storage, param);
+			}
 		}
 
 		internal void DoAutoCommit()
