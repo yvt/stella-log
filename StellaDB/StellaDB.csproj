@@ -56,6 +56,7 @@
     <Compile Include="LowLevel\BTree.Blocks.cs" />
     <Compile Include="KeyComparer.cs" />
     <Compile Include="LowLevel\BTree.Enumerate.cs" />
+    <Compile Include="Transaction.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
