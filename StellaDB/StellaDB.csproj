@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{201F7E7E-51A8-4EF7-A6F1-438661447567}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Yavit.StellaDB</RootNamespace>
+    <AssemblyName>StellaDB</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Database.cs" />
+    <Compile Include="IO\IBlockStorage.cs" />
+    <Compile Include="IO\BlockFile.cs" />
+    <Compile Include="InvalidMagicNumberException.cs" />
+    <Compile Include="IO\WalBlockFile.cs" />
+    <Compile Include="IO\BufferedBlockFile.cs" />
+    <Compile Include="LowLevel\LowLevelDatabase.cs" />
+    <Compile Include="LowLevel\Superblock.cs" />
+    <Compile Include="LowLevel\Freemap.cs" />
+    <Compile Include="LowLevel\Bitmap.cs" />
+    <Compile Include="LowLevel\BTree.cs" />
+    <Compile Include="LowLevel\BufferPool.cs" />
+    <Compile Include="DataInconsistencyException.cs" />
+    <Compile Include="InvalidFormatVersionException.cs" />
+    <Compile Include="LowLevel\IKeyValueStore.cs" />
+    <Compile Include="LowLevel\LinkedListBlob.cs" />
+    <Compile Include="Utils\InternalUtils.cs" />
+    <Compile Include="Utils\SharedResources.cs" />
+    <Compile Include="Utils\WeakValueDictionary.cs" />
+    <Compile Include="LowLevel\Blob.cs" />
+    <Compile Include="LowLevel\BTree.Entries.cs" />
+    <Compile Include="LowLevel\BTree.Blocks.cs" />
+    <Compile Include="KeyComparer.cs" />
+    <Compile Include="LowLevel\BTree.Enumerate.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ProjectExtensions>
+    <MonoDevelop>
+      <Properties>
+        <Policies>
+          <TextStylePolicy inheritsSet="null" scope="text/x-csharp" />
+          <CSharpFormattingPolicy AfterDelegateDeclarationParameterComma="True" inheritsSet="Mono" inheritsScope="text/x-csharp" scope="text/x-csharp" />
+          <TextStylePolicy FileWidth="120" TabsToSpaces="False" inheritsSet="VisualStudio" inheritsScope="text/plain" scope="text/plain" />
+        </Policies>
+      </Properties>
+    </MonoDevelop>
+  </ProjectExtensions>
+  <ItemGroup>
+    <Folder Include="IO\" />
+    <Folder Include="LowLevel\" />
+    <Folder Include="Utils\" />
+  </ItemGroup>
+</Project>
