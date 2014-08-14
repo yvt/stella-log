@@ -26,6 +26,9 @@ namespace Yavit.StellaDB.LowLevel
 
 		public long NumAllocatedBlocks { get; set; }
 
+		public long UserBlockId1 { get; set; }
+		public long UserBlockId2 { get; set; }
+
 		public Superblock (StellaDB.IO.IBlockStorage storage)
 		{
 			this.storage = storage;
@@ -72,6 +75,9 @@ namespace Yavit.StellaDB.LowLevel
 					NumAllocatedBlocks > storage.NumBlocks) {
 					throw new DataInconsistencyException ("Invalid allocated block count.");
 				}
+
+				UserBlockId1 = br.ReadInt64 ();
+				UserBlockId2 = br.ReadInt64 ();
 			} else {
 				// header not found. maybe new file?
 				RootFreemapBlock = 0;
@@ -93,6 +99,8 @@ namespace Yavit.StellaDB.LowLevel
 			wb.Write (RootFreemapBlock);
 			wb.Write (DatabaseSize);
 			wb.Write (NumAllocatedBlocks);
+			wb.Write (UserBlockId1);
+			wb.Write (UserBlockId2);
 
 			storage.WriteBlock (0, stream.GetBuffer (), 0);
 		}

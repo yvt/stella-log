@@ -57,6 +57,25 @@ namespace Yavit.StellaDB.LowLevel
 			}
 		}
 
+		public long UserBlockId1
+		{
+			get {
+				return Superblock.UserBlockId1;
+			}
+			set {
+				Superblock.UserBlockId1 = value;
+			}
+		}
+		public long UserBlockId2
+		{
+			get {
+				return Superblock.UserBlockId2;
+			}
+			set {
+				Superblock.UserBlockId2 = value;
+			}
+		}
+
 		Utils.WeakValueDictionary<long, BTree> btrees = 
 			new Utils.WeakValueDictionary<long, BTree>();
 		public BTree OpenBTree(long blockId)
