@@ -17,82 +17,98 @@ namespace Yavit.StellaDB.LowLevel
 		{
 			readonly BTree tree;
 
-			int maximumEffectiveKeyLength = 96;
+			IO.Pager.PageHandle Page {
+				get {
+					return tree.pager [tree.BlockId];
+				}
+			}
+
+			int maximumEffectiveKeyLength = 0;
 
 			public int MaximumEffectiveKeyLength {
 				get {
+					if (maximumEffectiveKeyLength != 0) {
+						return maximumEffectiveKeyLength;
+					}
+					var bc = new InternalUtils.BitConverter (Page.Bytes);
+					maximumEffectiveKeyLength = bc.GetUInt16 (8);
 					return maximumEffectiveKeyLength;
 				}
 				set {
-					if (value > (tree.storage.BlockSize - 16) / 2 - 10) { // see (2)
-						throw new ArgumentOutOfRangeException ("value", "Key length must be less than the block size - 36.");
-					} else if (value <= 0) {
-						throw new ArgumentOutOfRangeException ("value", "Key length must be positive.");
-					}
+					ValidateEffectiveKeyLength (value);
 					maximumEffectiveKeyLength = value;
+
+					var page = Page;
+					var bc = new InternalUtils.BitConverter (page.Bytes);
+					bc.Set (8, (ushort)value);
+					page.MarkAsDirty ();
 				}
 			}
 
 			// Root node block id which is zero for empty tree
-			public long RootNodeBlockId = 0;
+			public long RootNodeBlockId {
+				get { 
+					var bc = new InternalUtils.BitConverter (Page.Bytes);
+					return bc.GetInt64 (10);
+				}
+				set {
+					var page = Page;
+					var bc = new InternalUtils.BitConverter (page.Bytes);
+					bc.Set (10, (long)value);
+					page.MarkAsDirty ();
+				}
+			}
 
 			public HeaderBlock(BTree tree)
 			{
 				this.tree = tree;
 			}
 
+			public void Initialize()
+			{
+				var bc = new InternalUtils.BitConverter (Page.Bytes);
+				bc.Set (0, HeaderMagic);
+				bc.Set (4, CurrentVersion);
+				RootNodeBlockId = 0;
+				MaximumEffectiveKeyLength = 96;
+				Page.MarkAsDirty ();
+			}
+
+			public void ValidateEffectiveKeyLength(int value) {
+				if (value > (tree.pager.BlockSize - 16) / 2 - 10) { // see (2)
+					throw new ArgumentOutOfRangeException ("value", "Key length must be less than the block size - 36.");
+				} else if (value <= 0) {
+					throw new ArgumentOutOfRangeException ("value", "Key length must be positive.");
+				}
+			}
+
 			public void Load()
 			{
-				using (var handle = tree.Database.BufferPool.CreateHandle()) {
-					tree.storage.ReadBlock (tree.BlockId, handle.Buffer, 0);
+				var bc = new InternalUtils.BitConverter (Page.Bytes);
+				uint magic = bc.GetUInt32(0);
+				if (magic != HeaderMagic) {
+					throw new InvalidMagicNumberException();
+				}
 
-					var str = handle.Stream;
-					var br = handle.BinaryReader;
+				uint version = bc.GetUInt32(4);
+				if (version != CurrentVersion) {
+					throw new InvalidFormatVersionException ();
+				}
 
-					str.Seek (0, SeekOrigin.Begin);
+				try {
+					ValidateEffectiveKeyLength(MaximumEffectiveKeyLength);
+				} catch (ArgumentOutOfRangeException ex) {
+					throw new DataInconsistencyException (ex);
+				}
 
-					uint magic = br.ReadUInt32 ();
-					if (magic != HeaderMagic) {
-						throw new InvalidMagicNumberException();
-					}
-
-					uint version = br.ReadUInt32 ();
-					if (version != CurrentVersion) {
-						throw new InvalidFormatVersionException ();
-					}
-
-					try {
-						MaximumEffectiveKeyLength = br.ReadUInt16 ();
-					} catch (ArgumentOutOfRangeException ex) {
-						throw new DataInconsistencyException (ex);
-					}
-
-					RootNodeBlockId = (long)br.ReadUInt64 ();
-					if (RootNodeBlockId <= 0) {
-						throw new DataInconsistencyException ("Root Block ID is not positive.");
-					}
+				if (RootNodeBlockId <= 0) {
+					throw new DataInconsistencyException ("Root Block ID is not positive.");
 				}
 			}
 
 			public void Drop()
 			{
 				tree.db.Freemap.DeallocateBlock (tree.BlockId);
-			}
-
-			public void Write()
-			{
-				using (var handle = tree.Database.BufferPool.CreateHandle()) {
-					var str = handle.Stream;
-					var bw = handle.BinaryWriter;
-
-					str.Seek (0, SeekOrigin.Begin);
-					bw.Write (HeaderMagic);
-					bw.Write (CurrentVersion);
-					bw.Write (checked((ushort)MaximumEffectiveKeyLength));
-					bw.Write(RootNodeBlockId);
-
-					tree.storage.WriteBlock (tree.BlockId, handle.Buffer, 0);
-				}
 			}
 
 		}
@@ -126,10 +142,12 @@ namespace Yavit.StellaDB.LowLevel
 			public NodeBlock Parent;
 			public int IndexInParent;
 
-			public readonly byte[] Bytes;
-			public readonly InternalUtils.BitConverter BitCvt;
+			public IO.Pager.PinnedPage Page;
+			public byte[] Bytes;
+			public InternalUtils.BitConverter BitCvt;
 			public readonly Bitmap FreeIndexMap;
-			public bool Dirty;
+
+			BufferPool.BufferHandle temporalBufferHandle;
 
 			public struct Item
 			{
@@ -156,7 +174,7 @@ namespace Yavit.StellaDB.LowLevel
 					get { return Node.BitCvt.GetUInt16 (Offset); }
 					set { 
 						Node.BitCvt.Set (Offset, checked((ushort)value));
-						Node.Dirty = true;
+						Node.MarkAsDirty ();
 					}
 				}
 				public long LinkedBlockId
@@ -165,7 +183,7 @@ namespace Yavit.StellaDB.LowLevel
 					get { return Node.BitCvt.GetInt64 (Offset + 2); }
 					set { 
 						Node.BitCvt.Set (Offset + 2, value); 
-						Node.Dirty = true;
+						Node.MarkAsDirty ();
 					}
 				}
 				// byte offset in the node block buffer to the actual key
@@ -179,8 +197,8 @@ namespace Yavit.StellaDB.LowLevel
 					[MethodImpl(InternalUtils.MethodImplAggresiveInlining)]
 					get { return checked((int)Node.BitCvt.GetVariant (Offset + 10, Node.Tree.keyLengthSize)); }
 					private set { 
-						Node.BitCvt.SetVariant (Offset + 10, Node.Tree.keyLengthSize, checked((ulong)value)); 
-						Node.Dirty = true;
+						Node.BitCvt.SetVariant (Offset + 10, Node.Tree.keyLengthSize, checked((ulong)value));
+						Node.MarkAsDirty ();
 					}
 				}
 				public int ValueLength
@@ -189,7 +207,7 @@ namespace Yavit.StellaDB.LowLevel
 					get { return checked((int)Node.BitCvt.GetVariant (KeyOffset + ActualKeyLength, Node.Tree.keyLengthSize)); }
 					set { 
 						Node.BitCvt.SetVariant (KeyOffset + ActualKeyLength, Node.Tree.keyLengthSize, checked((ulong)value)); 
-						Node.Dirty = true;
+						Node.MarkAsDirty ();
 					}
 				}
 				public int ValueOffset
@@ -218,7 +236,7 @@ namespace Yavit.StellaDB.LowLevel
 							throw new InvalidOperationException ("Item doesn't have an overflow page block id.");
 						}
 						Node.BitCvt.Set (ValueOffset, value);
-						Node.Dirty = true;
+						Node.MarkAsDirty ();
 					}
 				}
 				public byte[] GetKey()
@@ -265,15 +283,28 @@ namespace Yavit.StellaDB.LowLevel
 			{
 				this.Tree = tree;
 
-				Bytes = new byte[Storage.BlockSize];
-				BitCvt = new InternalUtils.BitConverter(Bytes);
-
 				FreeIndexMap = new Bitmap(tree.order - 1);
 			}
 
-			StellaDB.IO.IBlockStorage Storage
+			public void SetupForTemporaryNode()
 			{
-				get { return Tree.storage; }
+				if (BlockId != null) {
+					Unload ();
+				}
+				temporalBufferHandle = Tree.Database.BufferPool.CreateHandle ();
+				Bytes = temporalBufferHandle.Buffer;
+				BitCvt = new InternalUtils.BitConverter(Bytes);
+			}
+
+			void ReclaimTemporaryBuffer()
+			{
+				temporalBufferHandle.Dispose ();
+				Bytes = null;
+			}
+
+			StellaDB.IO.Pager Pager
+			{
+				get { return Tree.pager; }
 			}
 
 			int ItemSize
@@ -296,7 +327,7 @@ namespace Yavit.StellaDB.LowLevel
 						throw new InvalidOperationException ("Node is not loaded.");
 					}
 					BitCvt.Set (NodeHeaderFlagsOffset, (ushort)value);
-					Dirty = true;
+					MarkAsDirty ();
 				}
 			}
 
@@ -314,7 +345,7 @@ namespace Yavit.StellaDB.LowLevel
 						throw new InvalidOperationException ("Node is not loaded.");
 					}
 					BitCvt.Set (NodeHeaderFirstItemPointerOffset, (ushort)value);
-					Dirty = true;
+					MarkAsDirty ();
 				}
 			}
 			long FirstChildNodeBlockId
@@ -331,7 +362,7 @@ namespace Yavit.StellaDB.LowLevel
 						throw new InvalidOperationException ("Node is not loaded.");
 					}
 					BitCvt.Set (NodeHeaderFirstNodePointerOffset, value);
-					Dirty = true;
+					MarkAsDirty ();
 				}
 			}
 
@@ -384,6 +415,15 @@ namespace Yavit.StellaDB.LowLevel
 				}
 			}
 
+			public void MarkAsDirty()
+			{
+				if (!Page.IsValid) {
+					// Temporary page
+					return;
+				}
+				Page.MarkAsDirty ();
+			}
+
 			void Load(long blockId, NodeBlock parent, int indexInParent)
 			{
 				if (BlockId == blockId) {
@@ -391,13 +431,17 @@ namespace Yavit.StellaDB.LowLevel
 				}
 				Unload ();
 
-				Storage.ReadBlock ((long)blockId, Bytes, 0);
-				Dirty = false;
+				Page = Pager.Pin (blockId);
+				Bytes = Page.Bytes;
+				BitCvt = new InternalUtils.BitConverter(Bytes);
+
 				Parent = parent;
 				IndexInParent = indexInParent;
 
 				if (Bytes[NodeHeaderMagic1Offset] != NodeHeaderMagic1 ||
 					Bytes[NodeHeaderMagic2Offset] != NodeHeaderMagic2) {
+					Page.Dispose ();
+					Bytes = null;
 					throw new InvalidMagicNumberException ();
 				}
 
@@ -420,8 +464,13 @@ namespace Yavit.StellaDB.LowLevel
 				Parent = parent;
 				IndexInParent = indexInParent;
 
+				Page = Pager.Pin (blockId);
+				Bytes = Page.Bytes;
+				BitCvt = new InternalUtils.BitConverter(Bytes);
+
 				Bytes [NodeHeaderMagic1Offset] = NodeHeaderMagic1;
 				Bytes [NodeHeaderMagic2Offset] = NodeHeaderMagic2;
+				MarkAsDirty ();
 
 				Flags = NodeFlags.LeafNode;
 
@@ -429,8 +478,6 @@ namespace Yavit.StellaDB.LowLevel
 
 				FirstItemIndex = 0xffff;
 				FirstChildNodeBlockId = 0;
-
-				Dirty = true;
 			}
 
 			public void InitializeEmptyRoot(long blockId)
@@ -453,8 +500,10 @@ namespace Yavit.StellaDB.LowLevel
 
 			public void Unload()
 			{
-				Write ();
+				Page.Dispose ();
+				ReclaimTemporaryBuffer ();
 				Parent = null;
+				Bytes = null;
 				BlockId = null;
 			}
 
@@ -742,7 +791,6 @@ namespace Yavit.StellaDB.LowLevel
 							lowerNode.IndexInParent = item.Index;
 						}
 
-						node.Write ();
 						node.Validate ();
 						return;
 					}
@@ -901,8 +949,6 @@ namespace Yavit.StellaDB.LowLevel
 
 					// now we can write back the newly created node.
 					// (note that this might not be newNode)
-					node.Write ();
-					newNode.Write ();
 
 					node.Validate ();
 					newNode.Validate ();
@@ -935,7 +981,6 @@ namespace Yavit.StellaDB.LowLevel
 						(insertedPrevBlockId == (long)tree.cursor.Nodes [1].BlockId) ? InvalidIndex : 0;
 
 					tree.header.RootNodeBlockId = (long)newNode.BlockId;
-					tree.header.Write ();
 				}
 			}
 
@@ -1186,7 +1231,6 @@ namespace Yavit.StellaDB.LowLevel
 					node.Validate ();
 
 					// Continue rebalancing ancestors.
-					node.Write ();
 					--cursor.ActiveLevel;
 
 					if (prevSib != null)
@@ -1213,7 +1257,6 @@ namespace Yavit.StellaDB.LowLevel
 					cursor.RemoveRoot ();
 					cursor.Top.Parent = null;
 					cursor.Top.Tree.header.RootNodeBlockId = newRoot;
-					cursor.Top.Tree.header.Write ();
 				}
 			}
 
@@ -1417,23 +1460,6 @@ namespace Yavit.StellaDB.LowLevel
 				BlockId = null;
 			}
 
-			public void Write(int level = 0)
-			{
-				if (Parent != null) {
-					if (level > 100) {
-						throw new InvalidOperationException ();
-					}
-					Parent.Write (level + 1);
-				}
-
-				if (!Dirty || BlockId == null) {
-					return;
-				}
-
-				Storage.WriteBlock ((long)BlockId, Bytes, 0);
-				Dirty = false;
-			}
-
 			private void WriteIndent(TextWriter w, int level)
 			{
 				for(int i = 0; i < level; ++i){
@@ -1607,6 +1633,8 @@ namespace Yavit.StellaDB.LowLevel
 				Nodes.Add(root);
 				TemporalNode1 = new NodeBlock(root.Tree);
 				TemporalNode2 = new NodeBlock(root.Tree);
+				TemporalNode1.SetupForTemporaryNode();
+				TemporalNode2.SetupForTemporaryNode();
 			}
 
 			public NodeBlock Top

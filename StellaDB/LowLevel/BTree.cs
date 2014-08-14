@@ -101,7 +101,7 @@ namespace Yavit.StellaDB.LowLevel
 		internal const uint CurrentVersion = 0x00010000;
 
 		readonly LowLevelDatabase db;
-		readonly StellaDB.IO.IBlockStorage storage;
+		readonly StellaDB.IO.Pager pager;
 		long headerBlockId; // might be zeroed after dropped
 		readonly IKeyComparer comparer;
 
@@ -138,7 +138,7 @@ namespace Yavit.StellaDB.LowLevel
 				throw new ArgumentNullException ("db");
 			}
 			this.db = db;
-			storage = db.Storage;
+			pager = db.Pager;
 
 			comparer = new DefaultKeyComparer ();
 
@@ -150,12 +150,13 @@ namespace Yavit.StellaDB.LowLevel
 					throw new ArgumentNullException ("param");
 				}
 
-				// TODO: maximize key length
-				header.MaximumEffectiveKeyLength = param.MaximumKeyLength;
-
 				this.headerBlockId = db.Freemap.AllocateBlock ();
+
 				try {
-					header.Write ();
+					header.Initialize ();
+
+					// TODO: maximize key length
+					header.MaximumEffectiveKeyLength = param.MaximumKeyLength;
 				} catch {
 					db.Freemap.DeallocateBlock (headerBlockId);
 					throw;
@@ -170,7 +171,7 @@ namespace Yavit.StellaDB.LowLevel
 			itemSize = keyLength + 10;
 
 			// compute order of B-tree
-			order = (storage.BlockSize - NodeBlock.NodeHeaderSize) / itemSize;
+			order = (pager.BlockSize - NodeBlock.NodeHeaderSize) / itemSize;
 			if (order < 3) {
 				throw new InvalidOperationException ("Order cannot be less than 3. " +
 					"This error is usually caused by too small block size or too large key size.");
@@ -213,14 +214,6 @@ namespace Yavit.StellaDB.LowLevel
 
 			FlushAllEntriesForStructureModification ();
 			DisactivateAllEnumerator ();
-		}
-
-
-		void Flush()
-		{
-			if (cursor != null) {
-				cursor.Top.Write ();
-			}
 		}
 
 		public void Dump(TextWriter w)

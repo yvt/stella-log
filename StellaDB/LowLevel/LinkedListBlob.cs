@@ -163,20 +163,13 @@ namespace Yavit.StellaDB.LowLevel
 			public int MaxDataLength {
 				[MethodImpl(InternalUtils.MethodImplAggresiveInlining)]
 				get {
-					return Database.Storage.BlockSize - Block.BlockDataOffset;
+					return Database.Pager.BlockSize - Block.BlockDataOffset;
 				}
 			}
 
 			protected override Block CreateResource ()
 			{
 				return new Block (Database);
-			}
-
-			public void Flush()
-			{
-				foreach (var r in Resources) {
-					r.Write ();
-				}
 			}
 		}
 
@@ -190,17 +183,20 @@ namespace Yavit.StellaDB.LowLevel
 
 			public readonly LowLevelDatabase Database;
 			public long? BlockId { get; private set; }
+			IO.Pager.PinnedPage page;
 			byte[] buffer;
 			public long Position;
 			InternalUtils.BitConverter BitCvt;
-			bool Dirty = false;
 			long blobId;
 
 			public Block(LowLevelDatabase db)
 			{
 				Database = db;
-				buffer = new byte[db.Storage.BlockSize];
-				BitCvt = new InternalUtils.BitConverter(buffer);
+			}
+
+			public void MarkAsDirty()
+			{
+				page.MarkAsDirty ();
 			}
 
 			public override long? ResourceId {
@@ -225,7 +221,7 @@ namespace Yavit.StellaDB.LowLevel
 				set {
 					if (BlockId == null) 
 						throw new InvalidOperationException ("Block is not loaded.");
-					BitCvt.Set (BlockDataLengthOffset, value); Dirty = true;
+					BitCvt.Set (BlockDataLengthOffset, value); MarkAsDirty ();
 				}
 			}
 			public void Resize(int size)
@@ -255,7 +251,7 @@ namespace Yavit.StellaDB.LowLevel
 				set {
 					if (BlockId == null) 
 						throw new InvalidOperationException ("Block is not loaded.");
-					BitCvt.Set (BlockPreviousBlockIdOffset, value); Dirty = true;
+					BitCvt.Set (BlockPreviousBlockIdOffset, value); MarkAsDirty ();
 				}
 			}
 			public long NextBlockId {
@@ -268,7 +264,7 @@ namespace Yavit.StellaDB.LowLevel
 				set {
 					if (BlockId == null) 
 						throw new InvalidOperationException ("Block is not loaded.");
-					BitCvt.Set (BlockNextBlockIdOffset, value); Dirty = true;
+					BitCvt.Set (BlockNextBlockIdOffset, value); MarkAsDirty ();
 				}
 			}
 			public int MaxDataLength {
@@ -320,7 +316,7 @@ namespace Yavit.StellaDB.LowLevel
 				length = Math.Min (endOffset, MaxDataLength) - offset;
 				Buffer.BlockCopy (buf, start, buffer, offset + DataOffset, length);
 				DataLength = Math.Max (offset + length, DataLength);
-				Dirty = true;
+				MarkAsDirty ();
 				return length;
 			}
 
@@ -332,8 +328,9 @@ namespace Yavit.StellaDB.LowLevel
 				BlockId = id;
 
 				try {
-
-					Database.Storage.ReadBlock (id, buffer, 0);
+					page = Database.Pager.Pin(id);
+					buffer = page.Bytes;
+					BitCvt = new InternalUtils.BitConverter(buffer);
 
 					if (BitCvt.GetUInt32(0) != HeaderMagic) {
 						throw new InvalidMagicNumberException ();
@@ -344,10 +341,11 @@ namespace Yavit.StellaDB.LowLevel
 
 				} catch {
 					BlockId = null;
+					page.Dispose ();
 					throw;
 				}
 
-				Dirty = false;
+
 			}
 
 			public override void Initialize (long id, long category)
@@ -357,27 +355,22 @@ namespace Yavit.StellaDB.LowLevel
 				this.blobId = category;
 				BlockId = id;
 
+				page = Database.Pager.EraseAndPin(id);
+				buffer = page.Bytes;
+				BitCvt = new InternalUtils.BitConverter(buffer);
+
 				BitCvt.Set (0, HeaderMagic);
 				DataLength = 0;
 				PreviousBlockId = 0;
 				NextBlockId = 0;
 
-				Dirty = true;
+				MarkAsDirty ();
 			}
 
 			public override void Unload()
 			{
-				Write ();
+				page.Dispose ();
 				BlockId = null;
-			}
-
-			public void Write()
-			{
-				if (!Dirty || BlockId == null) {
-					return;
-				}
-				Database.Storage.WriteBlock ((long)BlockId, buffer, 0);
-				Dirty = false;
 			}
 
 			public void Drop(bool truncating)
@@ -385,7 +378,7 @@ namespace Yavit.StellaDB.LowLevel
 				long blockId = (long)BlockId;
 				long prev = PreviousBlockId;
 				Database.Freemap.DeallocateBlock (blockId);
-				Dirty = false;
+
 				if (truncating && prev != 0) {
 					// move the existing reference to the previous block
 					foreach (var r in Database.LinkedListBlobManager.GetReferencesOfResource(blockId)) {
@@ -625,9 +618,6 @@ namespace Yavit.StellaDB.LowLevel
 			}
 			public override void Flush ()
 			{ 
-				foreach (var r in db.LinkedListBlobManager.GetResourcesOfCategory(BlobId)) {
-					r.Write ();
-				}
 			}
 			public override long Length {
 				get {

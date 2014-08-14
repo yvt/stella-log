@@ -57,6 +57,7 @@
     <Compile Include="KeyComparer.cs" />
     <Compile Include="LowLevel\BTree.Enumerate.cs" />
     <Compile Include="Transaction.cs" />
+    <Compile Include="IO\Pager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

@@ -10,7 +10,7 @@ namespace Yavit.StellaDB.LowLevel
 	{
 
 		readonly LowLevelDatabase db;
-		readonly StellaDB.IO.IBlockStorage storage;
+		readonly StellaDB.IO.Pager pager;
 
 		readonly BufferPool blockPool;
 
@@ -41,69 +41,66 @@ namespace Yavit.StellaDB.LowLevel
 		{
 			public readonly Freemap Freemap;
 			public long BlockId = -1;
-			public readonly long[] Children;
+			public IO.Pager.PinnedPage Page;
+			public InternalUtils.BitConverter BitCvt;
 			public int SelectedIndex = -1;
-
-			// true when bitmap must be written back
-			public bool Dirty = false;
 
 			public InternalNodeSelection(Freemap freemap)
 			{
 				this.Freemap = freemap;
-				Children = new long[freemap.numChildrenInNode];
 			}
+
+			public void MarkAsDirty()
+			{
+				Page.MarkAsDirty ();
+			}
+
+			public long GetChild(int index) { return BitCvt.GetInt64 (index * 8); }
+			public void SetChild(int index, long child) { BitCvt.Set (index * 8, child); MarkAsDirty (); }
+
+			public int NumChildren {
+				get { return Freemap.numChildrenInNode; }
+			}
+
 			public void Load(long blockId) {
 				Unload();
 				this.BlockId = blockId;
 
-				using (var buffer = Freemap.blockPool.CreateHandle()) {
-					Freemap.storage.ReadBlock (blockId, buffer.Buffer, 0);
-					Buffer.BlockCopy (buffer.Buffer, 0, Children, 0, buffer.Buffer.Length);
-					Dirty = false;
-				}
+				Page = Freemap.pager.Pin (blockId);
+				BitCvt = new InternalUtils.BitConverter (Page.Bytes);
 			}
 
 			public void InitializeEmpty(long blockId) {
 				Unload();
 				this.BlockId = blockId;
 
-				for (int i = 0; i < Children.Length; ++i) {
-					Children [i] = EmptyNodeBlockId;
-				}
+				Page = Freemap.pager.EraseAndPin (blockId);
+				BitCvt = new InternalUtils.BitConverter (Page.Bytes);
 
-				Dirty = true;
+				for (int i = 0, count = NumChildren; i < count; ++i) {
+					SetChild(i, EmptyNodeBlockId);
+				}
 			}
 
 			public bool IsFull() {
-				for (int i = 0; i < Children.Length; ++i) {
-					if ((Children [i] & FullNodeBlockIdBit) == 0) {
+				for (int i = 0, count = NumChildren; i < count; ++i) {
+					if ((GetChild(i) & FullNodeBlockIdBit) == 0) {
 						return false;
 					}
 				}
 				return true;
 			}
 			public bool IsEmpty() {
-				for (int i = 0; i < Children.Length; ++i) {
-					if (Children[i] != EmptyNodeBlockId) {
+				for (int i = 0, count = NumChildren; i < count; ++i) {
+					if (GetChild(i) != EmptyNodeBlockId) {
 						return false;
 					}
 				}
 				return true;
 			}
 
-			public void Flush() {
-				if (Dirty) {
-					using (var handle = Freemap.db.BufferPool.CreateHandle()) {
-						var buffer = handle.Buffer;
-						Buffer.BlockCopy (Children, 0, buffer, 0, buffer.Length);
-						Freemap.storage.WriteBlock (BlockId, buffer, 0);
-					}
-				}
-				Dirty = false;
-			}
-
 			public void Unload() {
-				Flush();
+				Page.Dispose ();
 				BlockId = -1;
 			}
 		}
@@ -111,48 +108,37 @@ namespace Yavit.StellaDB.LowLevel
 		{
 			public readonly Freemap Freemap;
 			public long BlockId = -1;
+			public IO.Pager.PinnedPage Page;
 
 			// if bit is set, the corresponding block is free
-			public readonly Bitmap Bitmap;
-
-			// true when bitmap must be written back
-			public bool Dirty = false;
+			public Bitmap Bitmap;
 
 			public LeafNodeSelection(Freemap freemap)
 			{
 				this.Freemap = freemap;
-				Bitmap = new Bitmap(freemap.numBlocksInLeafNode);
+				Bitmap = null;
 			}
 
-			public void Load(long blockId) {
+			public void Load(long blockId)
+			{
 				Unload();
 				this.BlockId = blockId;
 
-				using (var handle = Freemap.db.BufferPool.CreateHandle ()) {
-					var buffer = handle.Buffer;
-					Freemap.storage.ReadBlock (blockId, buffer, 0);
-					Buffer.BlockCopy (buffer, 0, Bitmap.GetBuffer (), 0, buffer.Length);
+				Page = Freemap.pager.Pin (blockId);
+				if (Bitmap == null) {
+					Bitmap = new Bitmap (0);
 				}
-
-				Dirty = false;
-				Bitmap.UpdateStatistics ();
+				Bitmap.SetBuffer (Page.Bytes);
 			}
 
-
-			public void Flush() {
-				if (Dirty && BlockId != -1) {
-					using (var handle = Freemap.db.BufferPool.CreateHandle ()) {
-						var buffer = handle.Buffer;
-						Buffer.BlockCopy (Bitmap.GetBuffer (), 0, buffer, 0, buffer.Length);
-						Freemap.storage.WriteBlock (BlockId, buffer, 0);
-					}
-				}
-
-				Dirty = false;
+			public void MarkAsDirty()
+			{
+				Page.MarkAsDirty ();
 			}
 
-			public void Unload() {
-				Flush ();
+			public void Unload() 
+			{
+				Page.Dispose ();
 				BlockId = -1;
 			}
 		}
@@ -179,7 +165,7 @@ namespace Yavit.StellaDB.LowLevel
 					Internals[i] = new InternalNodeSelection(freemap);
 					Internals[i].Load(blockId);
 
-					long next = Internals[i].Children[0];
+					long next = Internals[i].GetChild(0);
 					if (next == EmptyNodeBlockId) {
 						blockId = -1;
 						break;
@@ -192,13 +178,6 @@ namespace Yavit.StellaDB.LowLevel
 				if (blockId != -1) {
 					Leaf.Load(blockId);
 				}
-			}
-
-			public void Flush() {
-				foreach (var inode in Internals) {
-					inode.Flush ();
-				}
-				Leaf.Flush ();
 			}
 
 			/// <summary>
@@ -241,7 +220,7 @@ namespace Yavit.StellaDB.LowLevel
 				}
 
 				inode.SelectedIndex = index;
-				long next = inode.Children [index];
+				long next = inode.GetChild(index);
 				if (level == Internals.Length - 1) {
 					if (next == EmptyNodeBlockId) {
 						Leaf.Unload ();
@@ -272,15 +251,15 @@ namespace Yavit.StellaDB.LowLevel
 				throw new ArgumentNullException ("db");
 			}
 
-			storage = db.Storage;
+			pager = db.Pager;
 			blockPool = db.BufferPool;
 
 			// 8 bits/byte = 8 blocks/byte
-			numBlocksInLeafNode = checked(storage.BlockSize * 8);
+			numBlocksInLeafNode = checked(pager.BlockSize * 8);
 			numBlocksInLeafNodeBits = InternalUtils.GetBitWidth (numBlocksInLeafNode) - 1;
 
 			// 8 bytes/blockId = 8 bytes/block
-			numChildrenInNode = checked(storage.BlockSize / 8);
+			numChildrenInNode = checked(pager.BlockSize / 8);
 			numChildrenInNodeBits = InternalUtils.GetBitWidth (numChildrenInNode) - 1;
 
 			numLevels = ComputeNumLevelsForDatabaseSize (Superblock.DatabaseSize);
@@ -291,7 +270,7 @@ namespace Yavit.StellaDB.LowLevel
 
 				using (var handle = db.BufferPool.CreateHandle ()) {
 					var buf = handle.Buffer;
-					long[] buf2 = new long[storage.BlockSize / 8];
+					long[] buf2 = new long[pager.BlockSize / 8];
 					long lastDatabaseSize = Superblock.DatabaseSize;
 
 					do {
@@ -306,7 +285,7 @@ namespace Yavit.StellaDB.LowLevel
 						lastDatabaseSize = Superblock.DatabaseSize;
 						Superblock.DatabaseSize = Math.Max (Superblock.DatabaseSize,
 							numLevels + 2);
-						storage.NumBlocks = Math.Max (storage.NumBlocks,
+						pager.NumBlocks = Math.Max (pager.NumBlocks,
 							Superblock.DatabaseSize);
 						numLevels = ComputeNumLevelsForDatabaseSize (Superblock.DatabaseSize);
 
@@ -325,7 +304,10 @@ namespace Yavit.StellaDB.LowLevel
 						// link to the next level
 						buf2 [0] = i + 2;
 						Buffer.BlockCopy (buf2, 0, buf, 0, 8);
-						storage.WriteBlock (i + 1, buf, 0);
+
+						var page = pager [i + 1];
+						Buffer.BlockCopy (buf2, 0, page.Bytes, 0, pager.BlockSize);
+						page.MarkAsDirty ();
 					}
 
 					// leaf node.
@@ -336,7 +318,11 @@ namespace Yavit.StellaDB.LowLevel
 						buf [i >> 3] &= (byte)~(1 << (i & 7));
 					}
 
-					storage.WriteBlock (numLevels + 1, buf, 0);
+					{
+						var page = pager [numLevels + 1];
+						Buffer.BlockCopy (buf, 0, page.Bytes, 0, pager.BlockSize);
+						page.MarkAsDirty ();
+					}
 
 					// now link superblock to the root freemap block.
 					Superblock.RootFreemapBlock = 1;
@@ -399,10 +385,10 @@ namespace Yavit.StellaDB.LowLevel
 			for (int level = 0; level < numLevels; ++level) {
 				var inode = selection.Internals [level];
 				var index = ComputeIndexOfBlockAtLevel (blockId, level);
-				if ((inode.Children [index] & FullNodeBlockIdBit) != 0) {
+				if ((inode.GetChild(index) & FullNodeBlockIdBit) != 0) {
 					// Already marked as used!
 					throw new InvalidOperationException ("The specified block is already marked as used.");
-				} else if (inode.Children[index] != EmptyNodeBlockId) {
+				} else if (inode.GetChild(index) != EmptyNodeBlockId) {
 					selection.Select (level, index);
 				} else {
 					// Need to create a child block.
@@ -411,28 +397,25 @@ namespace Yavit.StellaDB.LowLevel
 					using (var handle = db.BufferPool.CreateHandle ()) {
 						var buffer = handle.Buffer;
 						if (level == numLevels - 1) {
+							// Link the new leaf node.
+							inode.SetChild(index, nextNodeBlockId);
+							selection.Leaf.Load (nextNodeBlockId);
+
 							// Create leaf node.
 							var bmp = selection.Leaf.Bitmap;
 							++numCreatedNodes; // leaf node
 							if (numCreatedNodes + 1 > numBlocksInLeafNode) {
 								throw new InvalidOperationException ();
 							}
-							storage.NumBlocks = Math.Max (storage.NumBlocks, nextNodeBlockId + 1);
+							pager.NumBlocks = Math.Max (pager.NumBlocks, nextNodeBlockId + 1);
 
 							bmp.FillOne ();
 							bmp.SetRanged (false, 0, numCreatedNodes + 2);
 
-							Buffer.BlockCopy (bmp.GetBuffer (), 0, buffer, 0, buffer.Length);
-							selection.Leaf.BlockId = nextNodeBlockId;
-							selection.Leaf.Dirty = false;
-							storage.WriteBlock (nextNodeBlockId, buffer, 0);
-
-							// Link the new leaf node.
-							inode.Children [index] = nextNodeBlockId;
-							inode.Dirty = true;
+							selection.Leaf.MarkAsDirty ();
 
 							++db.Superblock.NumAllocatedBlocks;
-							db.Superblock.Write ();
+							
 							return;
 						} else {
 							// Create internal node.
@@ -440,12 +423,11 @@ namespace Yavit.StellaDB.LowLevel
 							if (numCreatedNodes + 2 > numBlocksInLeafNode) {
 								throw new InvalidOperationException ();
 							}
-							storage.NumBlocks = Math.Max (storage.NumBlocks, nextNodeBlockId + 1);
+							pager.NumBlocks = Math.Max (pager.NumBlocks, nextNodeBlockId + 1);
 							ninode.InitializeEmpty (nextNodeBlockId);
 
 							// Link the new node.
-							inode.Children [index] = nextNodeBlockId;
-							inode.Dirty = true;
+							inode.SetChild(index, nextNodeBlockId);
 
 							++nextNodeBlockId;
 							++numCreatedNodes;
@@ -465,14 +447,14 @@ namespace Yavit.StellaDB.LowLevel
 				throw new InvalidOperationException ("The specified block is already marked as used.");
 			}
 			leaf.Bitmap [leafIndex] = false;
-			leaf.Dirty = true;
+			leaf.MarkAsDirty ();
 
 			// All blocks in the leaf were marked as used?
 			if (leaf.Bitmap.NumOnes == 0) {
 				for (int level = numLevels - 1; level >= 0; --level) {
 					var inode = selection.Internals [level];
-					inode.Children [inode.SelectedIndex] |= FullNodeBlockIdBit;
-					inode.Dirty = true;
+					inode.SetChild (inode.SelectedIndex, 
+						inode.GetChild (inode.SelectedIndex) | FullNodeBlockIdBit);
 
 					if (!inode.IsFull()) {
 						break;
@@ -481,7 +463,6 @@ namespace Yavit.StellaDB.LowLevel
 			}
 
 			++db.Superblock.NumAllocatedBlocks;
-			db.Superblock.Write ();
 		}
 
 		void MarkBlockAsFree(long blockId)
@@ -493,7 +474,7 @@ namespace Yavit.StellaDB.LowLevel
 			for (int level = 0; level < numLevels; ++level) {
 				var inode = selection.Internals [level];
 				var index = ComputeIndexOfBlockAtLevel (blockId, level);
-				if (inode.Children [index] == EmptyNodeBlockId) {
+				if (inode.GetChild(index) == EmptyNodeBlockId) {
 					// Already marked as used!
 					throw new InvalidOperationException ("The specified block is already marked as free.");
 				} else {
@@ -508,22 +489,21 @@ namespace Yavit.StellaDB.LowLevel
 				throw new InvalidOperationException ("The specified block is already marked as used.");
 			}
 			leaf.Bitmap [leafIndex] = true;
-			leaf.Dirty = true;
+			leaf.MarkAsDirty ();
 
 			if (leaf.Bitmap.NumOnes == 1) {
 				// Leaf was full, but is not full now.
 				for (int level = numLevels - 1; level >= 0; --level) {
 					var inode = selection.Internals [level];
-					if ((inode.Children [inode.SelectedIndex] & FullNodeBlockIdBit) == 0) {
+					if ((inode.GetChild(inode.SelectedIndex) & FullNodeBlockIdBit) == 0) {
 						break;
 					}
-					inode.Children [inode.SelectedIndex] &= ~FullNodeBlockIdBit;
-					inode.Dirty = true;
+					inode.SetChild (inode.SelectedIndex,
+						inode.GetChild (inode.SelectedIndex) & ~FullNodeBlockIdBit);
 				}
 			}
 
 			--db.Superblock.NumAllocatedBlocks;
-			db.Superblock.Write ();
 		}
 
 		// traverses tree to find a free block.
@@ -551,7 +531,7 @@ namespace Yavit.StellaDB.LowLevel
 				int numChildren = numChildrenInNode;
 				for (int i = 0; i < numChildren; ++i) {
 					int index = (i + startIndex) & (numChildren - 1);
-					long bId = inode.Children [index];
+					long bId = inode.GetChild(index);
 					if (bId == EmptyNodeBlockId) {
 						// this region is completely empty
 						selection.Select (level, index);
@@ -624,11 +604,6 @@ namespace Yavit.StellaDB.LowLevel
 			MarkBlockAsFree (blockId);
 		}
 
-		public void Flush()
-		{
-			selection.Flush ();
-		}
-
 		/// <summary>
 		/// Resizes the database.
 		/// If any errors should occur during the resize process, 
@@ -648,13 +623,10 @@ namespace Yavit.StellaDB.LowLevel
 			if (newNumLevels == numLevels) {
 				// The number of levels didn't change.
 				// Ne need to update freemap.
-				storage.NumBlocks = newNumBlocks;
+				pager.NumBlocks = newNumBlocks;
 				Superblock.DatabaseSize = newNumBlocks;
-				Superblock.Write ();
 				return;
 			}
-
-			selection.Flush ();
 
 			// The number of levels changed.
 			int numAddedLevels = newNumLevels - numLevels;
@@ -674,8 +646,6 @@ namespace Yavit.StellaDB.LowLevel
 						break;
 					}
 				}
-				selection.Flush ();
-
 				if (i < numAddedLevels) {
 					// No space left for new nodes.
 					// Since we are expanding the database, we may be able to allocate blocks from
@@ -703,13 +673,13 @@ namespace Yavit.StellaDB.LowLevel
 			}
 
 			// resize storage.
-			storage.NumBlocks = Math.Max (storage.NumBlocks, newNumBlocks);
+			pager.NumBlocks = Math.Max (pager.NumBlocks, newNumBlocks);
 
 			// make new internal nodes.
 			long oldDbSize = Superblock.DatabaseSize;
 			using (var handle = db.BufferPool.CreateHandle ()) {
 				var buf = handle.Buffer;
-				long[] buf2 = new long[storage.BlockSize / 8];
+				long[] buf2 = new long[pager.BlockSize / 8];
 
 				for (int i = 0; i < buf2.Length; ++i) {
 					buf2 [i] = EmptyNodeBlockId;
@@ -720,15 +690,15 @@ namespace Yavit.StellaDB.LowLevel
 				for (int i = 0; i < numAddedLevels; ++i) {
 					buf2 [0] = currentRootNode;
 					Buffer.BlockCopy (buf2, 0, buf, 0, 8);
-					storage.WriteBlock (addedBlockIds [i], buf, 0);
+					var page = pager [addedBlockIds [i]];
+					Buffer.BlockCopy (buf, 0, page.Bytes, 0, page.Bytes.Length);
+					page.MarkAsDirty ();
 					currentRootNode = addedBlockIds [i];
 				}
 
 				numLevels = newNumLevels;
 				Superblock.DatabaseSize = newNumBlocks;
 				Superblock.RootFreemapBlock = currentRootNode;
-
-				Superblock.Write ();
 			}
 
 			// recreate selection.

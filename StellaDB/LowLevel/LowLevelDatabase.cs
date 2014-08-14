@@ -2,9 +2,25 @@
 
 namespace Yavit.StellaDB.LowLevel
 {
+	public class LowLevelDatabaseParameters
+	{
+		int numCachedBlocks = 16;
+		public int NumCachedBlocks
+		{
+			get { return numCachedBlocks; }
+			set {
+				if (value < 0) {
+					throw new InvalidOperationException ();
+				}
+				numCachedBlocks = value;
+			}
+		}
+	}
+
 	public class LowLevelDatabase
 	{
-		public readonly StellaDB.IO.IBlockStorage Storage;
+		readonly StellaDB.IO.IBlockStorage Storage;
+		internal readonly StellaDB.IO.Pager Pager;
 
 		internal readonly Superblock Superblock;
 		internal readonly Freemap Freemap;
@@ -17,12 +33,15 @@ namespace Yavit.StellaDB.LowLevel
 		// TODO: use this (sync) everywhere
 		internal readonly object sync = new object();
 
-		public LowLevelDatabase (StellaDB.IO.IBlockStorage storage)
+		public LowLevelDatabase (StellaDB.IO.IBlockStorage storage,
+			LowLevelDatabaseParameters param)
 		{
 			Storage = storage;
 			if (storage == null) {
 				throw new ArgumentNullException ("storage");
 			}
+
+			Pager = new StellaDB.IO.Pager (storage, param.NumCachedBlocks + 1);
 
 			if (!InternalUtils.IsPowerOfTwo(storage.BlockSize)) {
 				throw new InvalidOperationException ("Block size must be a power of two.");
@@ -42,13 +61,17 @@ namespace Yavit.StellaDB.LowLevel
 
 			BufferPool = new BufferPool (storage.BlockSize);
 
-			Superblock = new Superblock (Storage);
+			Superblock = new Superblock (Pager);
 			Freemap = new Freemap (this);
 			LinkedListBlobHeaderManager = new LinkedListBlob.HeaderManager (this);
 			LinkedListBlobManager = new LinkedListBlob.BlockManager (this);
 
 			Flush ();
 		}
+
+		public LowLevelDatabase (StellaDB.IO.IBlockStorage storage):
+		this(storage, new LowLevelDatabaseParameters())
+		{ }
 
 		public long NumAllocatedBlocks
 		{
@@ -132,8 +155,7 @@ namespace Yavit.StellaDB.LowLevel
 
 		public void Flush()
 		{
-			Superblock.Write ();
-			Freemap.Flush ();
+			Pager.Flush ();
 			Storage.Flush ();
 		}
 	}

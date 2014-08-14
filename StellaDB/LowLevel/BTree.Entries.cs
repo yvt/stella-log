@@ -135,15 +135,7 @@ namespace Yavit.StellaDB.LowLevel
 
 			public void FlushForStructureModification()
 			{
-				Flush ();
 				node = null;
-			}
-
-			public void Flush()
-			{
-				if (node != null) {
-					node.Write ();
-				}
 			}
 
 			public void Deleted()
@@ -245,7 +237,6 @@ namespace Yavit.StellaDB.LowLevel
 						Buffer.BlockCopy (buffer, 0, node.Bytes, item.ValueOffset, buffer.Length);
 					}
 				}
-				Flush ();
 			}
 
 			void SwitchToBlob()
@@ -260,7 +251,6 @@ namespace Yavit.StellaDB.LowLevel
 				blob.WriteAllBytes (ReadValue ());
 				item.ValueLength = 0;
 				item.OverflowPageBlockId = blob.BlockId;
-				Node.Write ();
 
 				++entryStateNumber;
 			}
@@ -324,9 +314,6 @@ namespace Yavit.StellaDB.LowLevel
 					if (blobStream != null) {
 						blobStream.Flush ();
 					}
-					if (entry.node != null) {
-						entry.node.Write ();
-					}
 				}
 
 				public override int Read (byte[] buffer, int offset, int count)
@@ -386,7 +373,7 @@ namespace Yavit.StellaDB.LowLevel
 						var item = entry.NodeItem;
 						Buffer.BlockCopy (buffer, offset, entry.node.Bytes,
 							item.ValueOffset + (int)position, count);
-						entry.node.Dirty = true;
+						entry.node.MarkAsDirty ();
 					}
 
 					position = checked(position + count);
@@ -519,8 +506,6 @@ namespace Yavit.StellaDB.LowLevel
 			if (result.ExactMatch) {
 				CleanupCurrentEntry (result.NextIndex);
 				NodeBlock.DeleteKey (result.NextIndex, cursor);
-
-				Flush ();
 				return true;
 			}
 			return false;
@@ -537,7 +522,6 @@ namespace Yavit.StellaDB.LowLevel
 				root.InitializeEmptyRoot (db.Freemap.AllocateBlock ());
 				header.RootNodeBlockId = (long)root.BlockId;
 				cursor = new NodeCursor (root);
-				header.Write ();
 			}
 
 			Entry entry = GetEntryIfOnMemoryByKey(key);
@@ -557,7 +541,6 @@ namespace Yavit.StellaDB.LowLevel
 
 			cursor.Nodes [0].Validate ();
 			NodeBlock.InsertKey (result, cursor, key, 0, key.Length);
-			Flush ();
 			cursor.Nodes [0].Validate ();
 
 			result = NodeBlock.FindNode (cursor, key, 0, key.Length);
