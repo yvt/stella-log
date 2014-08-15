@@ -1,0 +1,117 @@
+﻿<#@ template language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+using NUnit.Framework;
+using NUnit.Framework.SyntaxHelpers;
+using System;
+using Yavit.StellaDB.Ston;
+using System.Collections.Generic;
+
+namespace Yavit.StellaDB.Test
+{
+	[TestFixture ()]
+	public class StonTest
+	{
+
+		void RoundTrip(object b, StonSerializer ser, Type type = null)
+		{
+			var bytes = ser.Serialize (b);
+			object ret;
+			if (type == null)
+				ret = ser.DeserializeObject (bytes);
+			else {
+				ret = ser.Deserialize (bytes, type);
+			}
+
+			Assert.That (ret, Is.EqualTo (b));
+		}
+		void RoundTrip(object b, Type type = null)
+		{
+			RoundTrip (b, new StonSerializer (), type);
+		}
+
+		[Test ()] public void Null ()				{ RoundTrip (null); }
+		[Test ()] public void True ()				{ RoundTrip (true); }
+		[Test ()] public void False ()				{ RoundTrip (false); }
+
+		[Test ()] public void String1 ()			{ RoundTrip (""); }
+		[Test ()] public void String2 ()			{ RoundTrip ("hoge"); }
+		[Test ()] public void String3 ()			{ 
+			var s = "0123456789abcdef";
+			s += s; s += s; s += s; s += s; s += s;
+			RoundTrip(s);
+		}
+
+		[Test ()] public void Array ()				{ RoundTrip (new object[] {1, 2, 3}, typeof(IEnumerable<object>)); }
+
+		[Test ()] public void Map (){ 
+			RoundTrip (new Dictionary<string, object>() {
+				{"hoge", 1}, {"piyo", 2}
+			}, typeof(IDictionary<string, object>)); 
+		}
+
+		// float is not supported yet.
+		// [Test ()] public void Float ()				{ RoundTrip (114514.810893f); }
+
+		[Test ()] public void Double ()				{ RoundTrip (114514.810893); }
+
+		// DateTime is not supported yet.
+		// [Test ()] public void DateTime ()				{ RoundTrip (DateTime.Now()); }
+
+		// Integer boundary value testing.
+		<# 
+		var  integerBoundaryCases = new decimal[] {
+			0,
+			64, -64,
+			64 + 0x100, -(64 + 0x100),
+			64 + 0x10100, -(64 + 0x10100),
+			64 + 0x1010100, -(64 + 0x1010100),
+			64 + 0x101010100, -(64 + 0x101010100),
+			64 + 0x1000101010100, -(64 + 0x1000101010100),
+			long.MaxValue - 1, long.MinValue + 1,
+			ulong.MaxValue - 1
+		};
+		foreach (var shift in new int[] { -1, 0, 1 }) 
+		foreach (var e in integerBoundaryCases) {
+			var testedValue = e + shift;
+			string name = testedValue < 0 ? "Minus" + (-testedValue).ToString() : testedValue.ToString();
+		#>[Test ()] public void Integer<#= name #> () { RoundTrip (<#= testedValue #>); }
+		<# } #>
+			
+		// Stringified integer boundary value testing.
+		<# 
+		var stringifiedIntegerBoundaryCases = new decimal[] {
+			0,
+			-128, 128,
+			128 + 0x100, -(128 + 0x100),
+			128 + 0x10100, -(128 + 0x10100),
+			128 + 0x100010100, -(128 + 0x100010100),
+			long.MaxValue,
+			ulong.MaxValue
+		};
+		foreach (var shift in new int[] { -1, 0, 1 }) 
+		foreach (var e in stringifiedIntegerBoundaryCases) {
+			var testedValue = e + shift;
+			string name = testedValue < 0 ? "Minus" + (-testedValue).ToString() : testedValue.ToString();
+		#>[Test ()] public void StringifiedInteger<#= name #> () { RoundTrip ("<#= testedValue #>"); }
+		<# } #>
+
+
+
+		// Char boundary value testing.
+		<# 
+		var  charBoundaryCases = new decimal[] {
+			1, 256, 65534
+
+		};
+		foreach (var shift in new int[] { -1, 0, 1 }) 
+		foreach (var e in charBoundaryCases) {
+			var testedValue = e + shift;
+		#>[Test ()] public void Char<#= testedValue #> () { RoundTrip ((char)<#= testedValue #>); }
+		<# } #>
+
+	}
+}
+

@@ -45,6 +45,10 @@
     <Compile Include="LowLevelBTreeEntryTest.cs" />
     <Compile Include="LowLevelBTreeEnumTest.cs" />
     <Compile Include="DatabaseTest.cs" />
+    <Compile Include="StonTest.cs">
+      <DependentUpon>StonTest.tt</DependentUpon>
+    </Compile>
+    <Compile Include="StonConverterTest.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -52,5 +56,11 @@
       <Project>{201F7E7E-51A8-4EF7-A6F1-438661447567}</Project>
       <Name>StellaDB</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="StonTest.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>StonTest.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 </Project>

@@ -59,6 +59,10 @@
     <Compile Include="Transaction.cs" />
     <Compile Include="IO\Pager.cs" />
     <Compile Include="Utils\DeleteOnCloseFileStream.cs" />
+    <Compile Include="Utils\MemoryBinaryWriter.cs" />
+    <Compile Include="Ston\StonConverter.cs" />
+    <Compile Include="Ston\StonSerializer.cs" />
+    <Compile Include="Ston\StonException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
@@ -76,5 +80,6 @@
     <Folder Include="IO\" />
     <Folder Include="LowLevel\" />
     <Folder Include="Utils\" />
+    <Folder Include="Ston\" />
   </ItemGroup>
 </Project>
