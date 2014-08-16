@@ -121,18 +121,68 @@ namespace Yavit.StellaDB.Benchmark
 			}
 		}
 
+		static void ScanSton(Ston.StonReader reader)
+		{
+			var isdic = new Stack<bool> ();
+			while (true) {
+				switch (reader.CurrentNodeType) {
+				case Yavit.StellaDB.Ston.StonReader.NodeType.EndOfDocument:
+					return;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Null:
+					reader.ReadNull ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Dictionary:
+					isdic.Push (true);
+					reader.StartDictionary ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.List:
+					isdic.Push (false);
+					reader.StartList ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.EndOfCollection:
+					if (isdic.Pop()) {
+						reader.EndDictionary ();
+					} else {
+						reader.EndList ();
+					}
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Integer:
+					reader.ReadInteger ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Float:
+					reader.ReadFloat ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Double:
+					reader.ReadDouble ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Boolean:
+					reader.ReadBoolean ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.Char:
+					reader.ReadChar ();
+					break;
+				case Yavit.StellaDB.Ston.StonReader.NodeType.String:
+					reader.ReadString ();
+					break;
+				default:
+					throw new ArgumentOutOfRangeException ();
+				}
+			}
+		}
+
 		public static void TestSton()
 		{
 			var st = new Ston.StonSerializer ();
 			byte[] bytes = null;
 			var dic1 = new Dictionary<string, object>();
 			var dic2 = new Dictionary<string, string>();
-			for (int i = 0; i < 100; ++i) {
+			for (int i = 0; i < 10000; ++i) {
 				var key = i.ToString ();
 				var val = "hoge";
 				dic1.Add (key, val);
 				dic2.Add (key, val);
 			}
+			bytes = st.Serialize(dic2);
 			Console.Out.WriteLine ("Serialize Dictionary<string, object>: {0} ops/s", Benchmark(() => {
 				bytes = st.Serialize(dic1);
 			}));
@@ -140,6 +190,9 @@ namespace Yavit.StellaDB.Benchmark
 				bytes = st.Serialize(dic2);
 			}));
 
+			Console.Out.WriteLine ("StonReader: {0} ops/s", Benchmark(() => {
+				ScanSton(new Ston.StonReader(bytes));
+			}));
 			Console.Out.WriteLine ("DeserializeObject: {0} ops/s", Benchmark(() => {
 				st.DeserializeObject(bytes);
 			}));
