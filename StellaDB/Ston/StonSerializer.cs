@@ -71,7 +71,7 @@ namespace Yavit.StellaDB.Ston
 				}
 
 				var dic = obj as IDictionary<string, object>;
-				if (dic != null && converters.Count > 0) {
+				if (dic != null) {
 
 					StonConverter converter;
 					if (converters.TryGetValue (type, out converter)) {
@@ -100,7 +100,7 @@ namespace Yavit.StellaDB.Ston
 				}
 
 				var enumerable = obj as IEnumerable<object>;
-				if (enumerable != null && converters.Count > 0) {
+				if (enumerable != null) {
 					if (type.IsGenericType && !type.IsGenericTypeDefinition &&
 						!type.Equals(typeof(IList<object>)) &&
 						!type.Equals(typeof(IEnumerable<object>)) &&
