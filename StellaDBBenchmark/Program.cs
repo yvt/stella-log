@@ -1,12 +1,52 @@
 ﻿using System;
 using Yavit.StellaDB.IO;
-using Yavit.StellaDB.Test;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 
 namespace Yavit.StellaDB.Benchmark
 {
+
 	class MainClass
 	{
+
+
 		public static void Main (string[] args)
+		{
+			if (args.Length == 0) {
+				var fs = typeof(MainClass).GetMethods ();
+				Console.WriteLine (" List of tests:");
+				foreach (var f in fs) {
+					if (f.Name.StartsWith("Test"))
+						Console.WriteLine (f.Name);
+				}
+			} else {
+				var name = args [0];
+				var f = typeof(MainClass).GetMethod (name);
+				f.Invoke (null, new object[]{});
+			}
+		}
+
+		static double Benchmark(Action action)
+		{
+			var sw = new System.Diagnostics.Stopwatch ();
+			long testCount = 1;
+			while (true) {
+				sw.Reset ();
+				sw.Start ();
+				for (long i = 0; i < testCount; ++i)
+					action ();
+				sw.Stop ();
+				if (sw.ElapsedMilliseconds < 1000) {
+					testCount *= 2;
+					continue;
+				} else {
+					return testCount / ((double)sw.ElapsedTicks / System.Diagnostics.Stopwatch.Frequency);
+				}
+			}
+		}
+
+		public static void TestLowLevel()
 		{
 			try { System.IO.File.Delete("/tmp/test.stelladb"); } catch {}
 			using (var tmp = new TemporaryFile("/tmp/test.stelladb"))
@@ -78,6 +118,74 @@ namespace Yavit.StellaDB.Benchmark
 
 				db.Flush ();
 				//tree.Dump (Console.Out);
+			}
+		}
+
+		public static void TestSton()
+		{
+			var st = new Ston.StonSerializer ();
+			byte[] bytes = null;
+			var dic1 = new Dictionary<string, object>();
+			var dic2 = new Dictionary<string, string>();
+			for (int i = 0; i < 100; ++i) {
+				var key = i.ToString ();
+				var val = "hoge";
+				dic1.Add (key, val);
+				dic2.Add (key, val);
+			}
+			Console.Out.WriteLine ("Serialize Dictionary<string, object>: {0} ops/s", Benchmark(() => {
+				bytes = st.Serialize(dic1);
+			}));
+			Console.Out.WriteLine ("Serialize Dictionary<string, string>: {0} ops/s", Benchmark(() => {
+				bytes = st.Serialize(dic2);
+			}));
+
+			Console.Out.WriteLine ("DeserializeObject: {0} ops/s", Benchmark(() => {
+				st.DeserializeObject(bytes);
+			}));
+			Console.Out.WriteLine ("Deserialize Dictionary<string, object>: {0} ops/s", Benchmark(() => {
+				st.Deserialize<IDictionary<string, object>>(bytes);
+			}));
+			Console.Out.WriteLine ("Deserialize Dictionary<string, string>: {0} ops/s", Benchmark(() => {
+				st.Deserialize<IDictionary<string, string>>(bytes);
+			}));
+
+		}
+
+
+	}
+
+	public class TemporaryFile: IDisposable
+	{
+		private string fileName;
+		public TemporaryFile (): this(Path.GetTempFileName())
+		{
+		}
+
+		public TemporaryFile (string fileName)
+		{
+			this.fileName = fileName;
+		}
+
+		public string FileName 
+		{
+			get 
+			{
+				return fileName;
+			}
+		}
+
+		public FileStream Open()
+		{
+			return File.Open (fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite,
+				FileShare.Read | FileShare.Delete);
+		}
+
+		public void Dispose ()
+		{
+			if (fileName != null) {
+				File.Delete (fileName);
+				fileName = null;
 			}
 		}
 	}

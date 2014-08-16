@@ -18,8 +18,9 @@
     <DefineConstants>DEBUG;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Externalconsole>true</Externalconsole>
     <PlatformTarget>x86</PlatformTarget>
+    <ConsolePause>false</ConsolePause>
+    <Commandlineparameters>TestSton</Commandlineparameters>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>full</DebugType>
@@ -42,10 +43,6 @@
     <ProjectReference Include="..\StellaDB\StellaDB.csproj">
       <Project>{201F7E7E-51A8-4EF7-A6F1-438661447567}</Project>
       <Name>StellaDB</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\StellaDBTest\StellaDBTest.csproj">
-      <Project>{1B1C9FEC-7963-48B0-AFDD-98CA4252E70A}</Project>
-      <Name>StellaDBTest</Name>
     </ProjectReference>
   </ItemGroup>
 </Project>
