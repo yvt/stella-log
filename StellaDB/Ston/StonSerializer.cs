@@ -481,6 +481,7 @@ namespace Yavit.StellaDB.Ston
 					if (lval < 128) {
 						bw.Write (DataTypes.StringifiedSignedInteger8);
 						bw.Write ((byte)(lval));
+						return;
 					}
 					lval -= 128;
 					if (lval < 0x100) {
