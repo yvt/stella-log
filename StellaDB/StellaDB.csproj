@@ -63,6 +63,10 @@
     <Compile Include="Ston\StonConverter.cs" />
     <Compile Include="Ston\StonSerializer.cs" />
     <Compile Include="Ston\StonException.cs" />
+    <Compile Include="Ston\StonWriter.cs" />
+    <Compile Include="Ston\DataTypes.cs" />
+    <Compile Include="Ston\StonReader.cs" />
+    <Compile Include="Ston\StonInteger.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
