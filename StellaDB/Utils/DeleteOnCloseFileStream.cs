@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Yavit.StellaDB.Utils
 {
-	public class DeleteOnCloseFileStream: Stream
+	sealed class DeleteOnCloseFileStream: Stream
 	{
 		string fileName;
 		Stream baseStream;
