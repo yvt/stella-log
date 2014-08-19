@@ -59,6 +59,31 @@ namespace Yavit.StellaDB.LowLevel
 				}
 			}
 
+			public long UserInfo1 {
+				get {
+					var bc = new InternalUtils.BitConverter (Page.Bytes);
+					return bc.GetInt64 (18);
+				}
+				set {
+					var page = Page;
+					var bc = new InternalUtils.BitConverter (page.Bytes);
+					bc.Set (18, (long)value);
+					page.MarkAsDirty ();
+				}
+			}
+			public long UserInfo2 {
+				get {
+					var bc = new InternalUtils.BitConverter (Page.Bytes);
+					return bc.GetInt64 (26);
+				}
+				set {
+					var page = Page;
+					var bc = new InternalUtils.BitConverter (page.Bytes);
+					bc.Set (26, (long)value);
+					page.MarkAsDirty ();
+				}
+			}
+
 			public HeaderBlock(BTree tree)
 			{
 				this.tree = tree;

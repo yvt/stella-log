@@ -17,6 +17,8 @@ namespace Yavit.StellaDB
 		readonly System.IO.Stream journalStream;
 		readonly bool closeOnDispose;
 
+		MasterTable master;
+
 		public Database (System.IO.Stream dbStream, System.IO.Stream journalStream,
 			bool closeOnDispose)
 		{
@@ -95,6 +97,10 @@ namespace Yavit.StellaDB
 
 		void OpenDatabase()
 		{
+			UnloadAllTables ();
+			if (master != null)
+				master.Unload ();
+
 			var storage = new IO.BlockFile (dbStream);
 			var param = new LowLevel.LowLevelDatabaseParameters ();
 			param.NumCachedBlocks = 512;
@@ -135,6 +141,52 @@ namespace Yavit.StellaDB
 			}
 			currentTransaction = new Transaction (this);
 			return currentTransaction;
+		}
+
+		internal LowLevel.LowLevelDatabase LowLevelDatabase
+		{
+			get {
+				return lldb;
+			}
+		}
+
+		internal MasterTable MasterTable
+		{
+			get {
+				if (master == null) {
+					master = new MasterTable (this);
+				}
+				return master;
+			}
+		}
+
+		Utils.WeakValueDictionary<string, Table> tables =
+			new Yavit.StellaDB.Utils.WeakValueDictionary<string, Table>();
+
+		void UnloadAllTables()
+		{
+			foreach (var table in tables.Values) {
+				table.Unload ();
+			}
+		}
+
+		public Table GetTable(string name)
+		{
+			Table table;
+
+			if (!tables.TryGetValue(name, out table)) {
+				table = new Table (this, name);
+				tables.Add (name, table);
+			}
+
+			return table;
+		}
+
+		public Table this [string tableName]
+		{
+			get {
+				return GetTable (tableName);
+			}
 		}
 	}
 }

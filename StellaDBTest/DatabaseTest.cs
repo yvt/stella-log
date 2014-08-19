@@ -32,6 +32,21 @@ namespace Yavit.StellaDB.Test
 				Database.OpenFile(tmp.FileName, JournalingMode.File);
 			}
 		}
+
+		[Test]
+		public void CreateTable1()
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["testtable"];
+			table.AutoIncrementRowIdValue = 1; // ensure table is created
+		}
+		[Test]
+		public void CreateTable2()
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["testtabletesttabletesttabletesttabletesttabletesttabletesttabletesttable"];
+			table.AutoIncrementRowIdValue = 1; // ensure table is created
+		}
 	}
 }
 

@@ -74,6 +74,9 @@
     <Compile Include="Ston\StonVariant.cs" />
     <Compile Include="Indexer\Index.cs" />
     <Compile Include="Indexer\IndexConverter.cs" />
+    <Compile Include="Utils\ArrayComparer.cs" />
+    <Compile Include="Table.Indices.cs" />
+    <Compile Include="MasterTable.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

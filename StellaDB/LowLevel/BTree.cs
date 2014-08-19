@@ -203,6 +203,31 @@ namespace Yavit.StellaDB.LowLevel
 			}
 		}
 
+		public long UserInfo1
+		{
+			get { return header.UserInfo1; }
+			set { header.UserInfo1 = value; }
+		}
+		public long UserInfo2
+		{
+			get { return header.UserInfo2; }
+			set { header.UserInfo2 = value; }
+		}
+
+		public int MaximumKeyLength
+		{
+			get {
+				return header.MaximumEffectiveKeyLength;
+			}
+		}
+
+		public IKeyComparer KeyComparer
+		{
+			get {
+				return comparer;
+			}
+		}
+
 		int ComputeKeyLengthSizeForEffectiveKeyLength(int keyLengthVal)
 		{
 			return (InternalUtils.GetBitWidth (keyLengthVal) + 7) / 8;
