@@ -5,24 +5,39 @@ namespace Yavit.StellaDB.Indexer
 {
 
 
-	abstract class IndexKeyProvider
+	abstract class KeyProvider
 	{
 		public abstract IKeyComparer KeyComparer { get; }
-		public abstract object Parameters { get; }
+		public abstract KeyParameter Parameters { get; }
 		public abstract int KeyLength { get; }
 		public abstract bool EncodeKey(object value, byte[] output, int offset);
 		public abstract bool SupportsType(Type type);
 	}
 
-	sealed class BinaryKeyParameters
+	public abstract class KeyParameter
 	{
-		public int KeyLength { get; set; }
+		internal abstract KeyProvider CreateKeyProvider();
 	}
 
-	sealed class NumericKeyParameters
-	{ }
+	public sealed class BinaryKeyParameters: KeyParameter
+	{
+		public int KeyLength { get; set; }
 
-	sealed class NumericKeyProvider: IndexKeyProvider
+		internal override KeyProvider CreateKeyProvider ()
+		{
+			throw new NotImplementedException ();
+		}
+	}
+
+	public sealed class NumericKeyParameters: KeyParameter
+	{
+		internal override KeyProvider CreateKeyProvider ()
+		{
+			return NumericKeyProvider.Instance;
+		}
+	}
+
+	sealed class NumericKeyProvider: KeyProvider
 	{
 		// Numeric key is represented with one of these three data types.
 		// When enncoding the key, the topmost data type must be used to
@@ -210,7 +225,7 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
-		public override object Parameters {
+		public override KeyParameter Parameters {
 			get {
 				return new NumericKeyParameters();
 			}

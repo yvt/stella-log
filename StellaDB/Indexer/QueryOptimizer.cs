@@ -10,7 +10,7 @@ namespace Yavit.StellaDB.Indexer
 		public class IndexPart
 		{
 			public string Key;
-			public IndexKeyProvider KeyProvider;
+			public KeyProvider KeyProvider;
 		}
 		public class Index
 		{

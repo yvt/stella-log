@@ -4,23 +4,32 @@ using System.Linq;
 
 namespace Yavit.StellaDB.Indexer
 {
-	sealed class IndexParameters
+	sealed class IndexParameters: KeyParameter
 	{
 		public class Field
 		{
 			public string Name;
-			public object Parameters;
+			public KeyParameter Parameters;
 		}
 		public Field[] Fields;
+
+		internal override KeyProvider CreateKeyProvider ()
+		{
+			return new Index (from field in Fields
+				select new Index.Field() {
+					Name = field.Name,
+					KeyProvider = field.Parameters.CreateKeyProvider()
+				});
+		}
 	}
 
-	sealed class Index: IndexKeyProvider
+	sealed class Index: KeyProvider
 	{
 
 		public class Field
 		{
 			public string Name;
-			public IndexKeyProvider KeyProvider;
+			public KeyProvider KeyProvider;
 
 			public Ston.StonVariant GetValue(Ston.StonVariant root)
 			{
@@ -106,7 +115,7 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
-		public override object Parameters {
+		public override KeyParameter Parameters {
 			get {
 				return new IndexParameters () {
 					Fields = (from field in fields

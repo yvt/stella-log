@@ -29,7 +29,7 @@ namespace Yavit.StellaDB.Indexer
 						var param = serializer.ConvertToType (dic ["param"], GetTypeForFieldName ((string)dic ["type"]));
 						return new IndexParameters.Field() {
 							Name = obj.Key,
-							Parameters = param
+							Parameters = (KeyParameter)param
 						};
 					}).ToArray()
 				};
