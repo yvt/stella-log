@@ -16,7 +16,7 @@ namespace Yavit.StellaDB.Indexer
 
 	sealed class BinaryKeyParameters
 	{
-		public int KeyLength { get; private set; }
+		public int KeyLength { get; set; }
 	}
 
 	sealed class NumericKeyParameters

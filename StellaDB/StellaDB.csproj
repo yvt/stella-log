@@ -73,6 +73,7 @@
     <Compile Include="Indexer\IndexTypes.cs" />
     <Compile Include="Ston\StonVariant.cs" />
     <Compile Include="Indexer\Index.cs" />
+    <Compile Include="Indexer\IndexConverter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
