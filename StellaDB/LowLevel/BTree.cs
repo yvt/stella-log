@@ -132,7 +132,7 @@ namespace Yavit.StellaDB.LowLevel
 
 		NodeCursor cursor;
 
-		internal BTree (LowLevelDatabase db, long blockId = -1, BTreeParameters param = null)
+		internal BTree (LowLevelDatabase db, long blockId, IKeyComparer comparer, BTreeParameters param)
 		{
 			if (db == null) {
 				throw new ArgumentNullException ("db");
@@ -140,7 +140,7 @@ namespace Yavit.StellaDB.LowLevel
 			this.db = db;
 			pager = db.Pager;
 
-			comparer = new DefaultKeyComparer ();
+			this.comparer = comparer;
 
 			this.headerBlockId = blockId;
 			header = new HeaderBlock (this);

@@ -43,14 +43,14 @@ namespace Yavit.StellaDB
 		#endregion
 
 		#region Store Creation
+
 		void LoadStore()
 		{
 			var tableId = database.MasterTable.GetTableIdByName (tableNameBytes);
 			if (tableId == null) {
 				store = null;
 			} else {
-				// TODO: need to specify ReverseKeyComparer
-				store = database.LowLevelDatabase.OpenBTree ((long)tableId);
+				store = database.LowLevelDatabase.OpenBTree ((long)tableId, ReversedKeyComparer.Instance);
 			}
 		}
 		// Called when new row or index is being added
@@ -61,8 +61,7 @@ namespace Yavit.StellaDB
 			if (store == null) {
 				var param = new LowLevel.BTreeParameters ();
 				param.MaximumKeyLength = 8; // Row Id
-				store = database.LowLevelDatabase.CreateBTree (param);
-				// TODO: need to specify ReverseKeyComparer
+				store = database.LowLevelDatabase.CreateBTree (param, ReversedKeyComparer.Instance);
 				database.MasterTable.AddTable (tableNameBytes, store.BlockId);
 
 				// Reset auto increment row value
@@ -70,6 +69,18 @@ namespace Yavit.StellaDB
 			}
 		}
 		#endregion
+
+		long RowIdForKey(byte[] key)
+		{
+			return new InternalUtils.BitConverter (key).GetInt64 (0);
+		}
+
+		long TableId
+		{
+			get {
+				return store.BlockId;
+			}
+		}
 
 		public long AutoIncrementRowIdValue
 		{
@@ -96,7 +107,11 @@ namespace Yavit.StellaDB
 				return;
 			}
 
-			// TODO: Drop
+			RemoveAllIndices ();
+			store.Drop ();
+			store = null;
+
+			Unload ();
 		}
 
 	}

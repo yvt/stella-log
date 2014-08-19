@@ -101,7 +101,8 @@ namespace Yavit.StellaDB.LowLevel
 
 		Utils.WeakValueDictionary<long, BTree> btrees = 
 			new Utils.WeakValueDictionary<long, BTree>();
-		public BTree OpenBTree(long blockId)
+
+		public BTree OpenBTree(long blockId, IKeyComparer comparer)
 		{
 			if (blockId <= 0) {
 				throw new ArgumentOutOfRangeException ("blockId", "Block ID must be positive.");
@@ -112,16 +113,26 @@ namespace Yavit.StellaDB.LowLevel
 				return tree;
 			}
 
-			tree = new BTree (this, blockId);
+			tree = new BTree (this, blockId, comparer, null);
 			btrees.Add (blockId, tree);
+			return tree;
+		}
+
+		public BTree OpenBTree(long blockId)
+		{
+			return OpenBTree (blockId, DefaultKeyComparer.Instance);
+		}
+
+		public BTree CreateBTree(BTreeParameters param, IKeyComparer comparer)
+		{
+			var tree = new BTree (this, -1, comparer, param);
+			btrees.Add (tree.BlockId, tree);
 			return tree;
 		}
 
 		public BTree CreateBTree(BTreeParameters param)
 		{
-			var tree = new BTree (this, -1, param);
-			btrees.Add (tree.BlockId, tree);
-			return tree;
+			return CreateBTree (param, DefaultKeyComparer.Instance);
 		}
 
 		public BTree CreateBTree()

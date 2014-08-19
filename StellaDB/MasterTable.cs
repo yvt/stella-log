@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Yavit.StellaDB
 {
@@ -130,6 +132,60 @@ namespace Yavit.StellaDB
 
 			store.DeleteEntry (MakeTableKey (name, tableId));
 		}
+
+		byte[] MakeIndexKey(long tableId, long indexId)
+		{
+			byte[] key = new byte[17];
+			var bc = new InternalUtils.BitConverter (key);
+			key [0] = (byte)ObjectType.Index;
+			bc.Set (1, tableId);
+			bc.Set (9, indexId);
+			return key;
+		}
+
+		public void AddIndexToTable(long tableId, long indexId, byte[] info)
+		{
+			EnsureLoaded ();
+
+			var row = store.InsertEntry (MakeIndexKey (tableId, indexId));
+			row.WriteValue (info);
+		}
+
+		public void RemoveIndexFromTable(long tableId, long indexId)
+		{
+			EnsureLoaded ();
+			store.DeleteEntry (MakeIndexKey (tableId, indexId));
+		}
+
+		public struct IndexInfo
+		{
+			public long IndexId;
+			public byte[] Info;
+		}
+		public IEnumerable<IndexInfo> GetIndicesOfTable(long tableId)
+		{
+			EnsureLoaded ();
+
+			var ret = new List<IndexInfo> ();
+			var startKey = MakeIndexKey (tableId, 0);
+			var comparer = store.KeyComparer;
+
+			foreach (var row in store.EnumerateEntiresInAscendingOrder(startKey)) {
+				var key = row.GetKey ();
+				if (key.Length != 17 || comparer.Compare(key, 0, 9, startKey, 0, 9) != 0) {
+					break;
+				}
+
+				var iId = new InternalUtils.BitConverter (key).GetInt64 (9);
+				ret.Add (new IndexInfo () {
+					IndexId = iId,
+					Info = row.ReadValue()
+				});
+			}
+
+			return ret;
+		}
+
 
 	}
 }

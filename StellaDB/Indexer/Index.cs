@@ -133,6 +133,12 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
+		public IEnumerable<Field> GetFields()
+		{
+			return from field in fields
+			       select field.Field;
+		}
+
 		#endregion
 
 		public long GetRowId(byte[] key, int offset)

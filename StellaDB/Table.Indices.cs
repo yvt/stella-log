@@ -6,17 +6,92 @@ namespace Yavit.StellaDB
 {
 	public partial class Table
 	{
+		static readonly Ston.StonSerializer indexInfoSerializer = new Ston.StonSerializer();
+		static Table() {
+			indexInfoSerializer.RegisterConverters (new Ston.StonConverter[]{
+				new Indexer.IndexConverter ()
+			});
+		}
+
 		sealed class TableIndex
 		{
+			public readonly Table Table;
 			public readonly Indexer.Index Index;
-			public readonly LowLevel.BTree store;
-			// TODO
+			public readonly LowLevel.BTree Store;
+
+			// Assigned by ComputeKey.
+			public byte[] ComputedKey;
+
+			// Temporary variable. Not used by TableIndex itself.
+			public byte[] OldComputedKey;
+
+			// Opens index.
+			public TableIndex(Table table, long indexId, byte[] info)
+			{
+				Table = table;
+
+				var iparam = indexInfoSerializer.Deserialize<Indexer.IndexParameters>(info);
+				Index = (Indexer.Index)iparam.CreateKeyProvider();
+
+				Store = table.database.LowLevelDatabase.OpenBTree(indexId, Index.KeyComparer);
+			}
+
+			// Creates index.
+			public TableIndex(Table table, Indexer.Index index)
+			{
+				Table = table;
+				Index = index;
+
+				var param = new LowLevel.BTreeParameters();
+				param.MaximumKeyLength = Index.KeyLength;
+				Store = table.database.LowLevelDatabase.CreateBTree(param, Index.KeyComparer);
+			}
+
+			public string[] GetEntryNames()
+			{
+				return (from field in Index.GetFields ()
+					select field.Name).ToArray();
+			}
+
+			public byte[] GetInfo()
+			{
+				return indexInfoSerializer.Serialize (Index.Parameters);
+			}
+
+			public long IndexId
+			{
+				get { return Store.BlockId; }
+			}
+
+			// Computes a key and stores it to ComputedKey.
+			public bool ComputeKey(Indexer.Index.Row row)
+			{
+				if (ComputedKey == null) {
+					ComputedKey = new byte[Index.KeyLength];
+				}
+				return Index.EncodeKey (row, ComputedKey, 0);
+			}
+
+			public void DeleteKey(byte[] key)
+			{
+				Store.DeleteEntry(key);
+			}
+
+			public void InsertKey(byte[] key)
+			{
+				Store.InsertEntry (key);
+			}
+
+			public void Drop()
+			{
+				Store.Drop ();
+			}
 		}
 
 		public class IndexEntry
 		{
-			public readonly string name;
-			public readonly Indexer.KeyParameter keyParameter;
+			readonly string name;
+			readonly Indexer.KeyParameter keyParameter;
 
 			public string Name {
 				get { return name; }
@@ -36,7 +111,7 @@ namespace Yavit.StellaDB
 			{
 				return new IndexEntry (name, new Indexer.NumericKeyParameters ());
 			}
-			public static IndexEntry CreateBinrayIndexEntry(string name, int maximumKeyLength)
+			public static IndexEntry CreateBinaryIndexEntry(string name, int maximumKeyLength)
 			{
 				return new IndexEntry (name, new Indexer.BinaryKeyParameters() { KeyLength = maximumKeyLength });
 			}
@@ -52,7 +127,11 @@ namespace Yavit.StellaDB
 				// Table is not materialized
 				return;
 			}
-			// TODO: load indices
+
+			foreach (var keyinfo in database.MasterTable.GetIndicesOfTable(store.BlockId)) {
+				var idx = new TableIndex (this, keyinfo.IndexId, keyinfo.Info);
+				indices.Add (idx.GetEntryNames (), idx);
+			}
 		}
 
 		public void EnsureIndex(IndexEntry[] entries)
@@ -63,21 +142,74 @@ namespace Yavit.StellaDB
 				throw new ArgumentException ("No entries given.");
 			if (entries.Any (e => e == null))
 				throw new ArgumentException ("One of the entries is null.");
-			if (entries.Any (e => e.keyParameter == null))
+			if (entries.Any (e => e.KeyParameter == null))
 				throw new ArgumentException ("THe key parameter of one of the entries is null.");
-			if (entries.Any (e => string.IsNullOrEmpty (e.name)))
+			if (entries.Any (e => string.IsNullOrEmpty (e.Name)))
 				throw new ArgumentException ("THe name of one of the entries is null or empty.");
 
-			EnsureLoaded ();
+			EnsureStoreCreated ();
 
 			// Does index already exist?
 			var names = (from entry in entries
-				select entry.name).ToArray();
+				select entry.Name).ToArray();
 			if (indices.ContainsKey(names)) {
 				return;
 			}
 
-			// TODO
+			// Create index.
+			var ientries = from entry in entries
+			               select new Indexer.Index.Field () {
+				Name = entry.Name,
+				KeyProvider = entry.KeyParameter.CreateKeyProvider()
+			};
+
+			var idx = new Indexer.Index (ientries);
+			var tidx = new TableIndex (this, idx);
+
+			indices.Add (tidx.GetEntryNames (), tidx);
+			database.MasterTable.AddIndexToTable (TableId, tidx.IndexId, tidx.GetInfo());
+
+			// Add items to the index.
+			foreach (var row in store) {
+				var reader = new Ston.StonReader (row.ReadValue ());
+				var val = new Ston.SerializedStonVariant (reader);
+				var r = new Indexer.Index.Row () {
+					RowId = RowIdForKey(row.GetKey()),
+					Value = val
+				};
+				if (tidx.ComputeKey(r)) {
+					tidx.InsertKey (tidx.ComputedKey);
+				}
+			}
+
+		}
+
+		public void RemoveIndex(string[] entryNames)
+		{
+			if (entryNames.Length == 0 || entryNames == null)
+				throw new ArgumentException ("entryNames");
+			if (entryNames.Any(string.IsNullOrEmpty))
+				throw new ArgumentException ("One of the entry name is empty or null.", "entryNames");
+
+			EnsureLoaded ();
+
+			TableIndex tidx;
+			if (indices.TryGetValue(entryNames, out tidx)) {
+				database.MasterTable.RemoveIndexFromTable (TableId, tidx.IndexId);
+				tidx.Drop ();
+				indices.Remove (entryNames);
+			}
+		}
+
+		public void RemoveAllIndices()
+		{
+			EnsureLoaded ();
+
+			foreach (var idx in indices) {
+				database.MasterTable.RemoveIndexFromTable (TableId, idx.Value.IndexId);
+				idx.Value.Drop ();
+			}
+			indices.Clear ();
 		}
 
 	}

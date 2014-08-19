@@ -44,7 +44,7 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
-		string GetFieldTypeName(object param)
+		string GetFieldTypeName(KeyParameter param)
 		{
 			if (param is NumericKeyParameters) return "num";
 			else if (param is BinaryKeyParameters) return "bin";
@@ -55,15 +55,14 @@ namespace Yavit.StellaDB.Indexer
 		{
 			if (obj is IndexParameters) {
 				var param = (IndexParameters)obj;
-				return new Dictionary<string, object> {
-					{ "fields", from field in param.Fields
-						select new Dictionary<string, object> {
-							{ "type", GetFieldTypeName(field) },
-							{ "param", field }
-						}}
+				return new Dictionary<string, object> { { "fields", from field in param.Fields
+						           select new KeyValuePair<string, object> (field.Name, new Dictionary<string, object> {
+							{ "type", GetFieldTypeName (field.Parameters) },
+							{ "param", field.Parameters }
+						})
+					}
 				};
 			} else if (obj is NumericKeyParameters) {
-				var param = (NumericKeyParameters)obj;
 				return new Dictionary<string, object> ();
 			} else if (obj is BinaryKeyParameters) {
 				var param = (BinaryKeyParameters)obj;
