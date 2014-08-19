@@ -68,6 +68,7 @@
     <Compile Include="Ston\StonReader.cs" />
     <Compile Include="Ston\StonInteger.cs" />
     <Compile Include="Table.cs" />
+    <Compile Include="Table.Data.cs" />
     <Compile Include="Indexer\QueryOptimizer.cs" />
     <Compile Include="Utils\NumberComparator.cs" />
     <Compile Include="Indexer\IndexTypes.cs" />

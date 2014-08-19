@@ -11,6 +11,8 @@ namespace Yavit.StellaDB
 		readonly byte[] tableNameBytes;
 		bool loaded = false;
 
+		readonly byte[] rowIdBuffer;
+
 		LowLevel.BTree store;
 
 		internal Table (Database db, string tableName)
@@ -21,6 +23,7 @@ namespace Yavit.StellaDB
 				throw new ArgumentNullException ("tableName");
 
 			tableNameBytes = new System.Text.UTF8Encoding ().GetBytes (tableName);
+			rowIdBuffer = new byte[8];
 		}
 
 		#region Load/Unload
@@ -75,6 +78,11 @@ namespace Yavit.StellaDB
 			return new InternalUtils.BitConverter (key).GetInt64 (0);
 		}
 
+		void EncodeRowId(byte[] buffer, long rowId)
+		{
+			new InternalUtils.BitConverter (buffer).Set (0, rowId);
+		}
+
 		long TableId
 		{
 			get {
@@ -113,6 +121,7 @@ namespace Yavit.StellaDB
 
 			Unload ();
 		}
+
 
 	}
 }

@@ -24,6 +24,7 @@ namespace Yavit.StellaDB
 
 			// Temporary variable. Not used by TableIndex itself.
 			public byte[] OldComputedKey;
+			public bool HasOldComputedKey;
 
 			// Opens index.
 			public TableIndex(Table table, long indexId, byte[] info)
@@ -68,6 +69,7 @@ namespace Yavit.StellaDB
 			{
 				if (ComputedKey == null) {
 					ComputedKey = new byte[Index.KeyLength];
+					OldComputedKey = new byte[Index.KeyLength];
 				}
 				return Index.EncodeKey (row, ComputedKey, 0);
 			}
@@ -171,15 +173,19 @@ namespace Yavit.StellaDB
 
 			// Add items to the index.
 			foreach (var row in store) {
-				var reader = new Ston.StonReader (row.ReadValue ());
-				var val = new Ston.SerializedStonVariant (reader);
-				var r = new Indexer.Index.Row () {
-					RowId = RowIdForKey(row.GetKey()),
-					Value = val
-				};
-				if (tidx.ComputeKey(r)) {
-					tidx.InsertKey (tidx.ComputedKey);
-				}
+				try {
+					var reader = new Ston.StonReader (row.ReadValue ());
+					var val = new Ston.SerializedStonVariant (reader);
+					var r = new Indexer.Index.Row () {
+						RowId = RowIdForKey(row.GetKey()),
+						Value = val
+					};
+					if (tidx.ComputeKey(r)) {
+						tidx.InsertKey (tidx.ComputedKey);
+					}
+				} 
+				catch (Ston.StonException) { }
+				catch (Ston.StonVariantException) { }
 			}
 
 		}
@@ -210,6 +216,88 @@ namespace Yavit.StellaDB
 				idx.Value.Drop ();
 			}
 			indices.Clear ();
+		}
+
+		void InsertRowToIndex(long rowId, Ston.StonVariant value)
+		{
+			var r = new Indexer.Index.Row() {
+				RowId = rowId,
+				Value = value
+			};
+			foreach (var idx in indices.Values) {
+				try {
+					if (idx.ComputeKey(r)) {
+						idx.InsertKey(idx.ComputedKey);
+					}
+				}
+				catch (Ston.StonException) { }
+				catch (Ston.StonVariantException) { }
+			}
+		}
+
+		void DeleteRowFromIndex(long rowId, Ston.StonVariant value)
+		{
+			var r = new Indexer.Index.Row() {
+				RowId = rowId,
+				Value = value
+			};
+			foreach (var idx in indices.Values) {
+				try {
+					if (idx.ComputeKey(r)) {
+						idx.DeleteKey(idx.ComputedKey);
+					}
+				}
+				catch (Ston.StonException) { }
+				catch (Ston.StonVariantException) { }
+			}
+		}
+
+		void PrepareIndexBeforeUpdatingRow(long rowId, Ston.StonVariant value)
+		{
+			var r = new Indexer.Index.Row() {
+				RowId = rowId,
+				Value = value
+			};
+			foreach (var idx in indices.Values) {
+				try {
+					if (idx.ComputeKey(r)) {
+						idx.HasOldComputedKey = true;
+						Buffer.BlockCopy(idx.ComputedKey, 0,
+							idx.OldComputedKey, 0, idx.ComputedKey.Length);
+					} else {
+						idx.HasOldComputedKey = false;
+					}
+				}
+				catch (Ston.StonException) { }
+				catch (Ston.StonVariantException) { }
+			}
+		}
+
+		void UpdateIndexAfterUpdatingRow(long rowId, Ston.StonVariant value)
+		{
+			var r = new Indexer.Index.Row() {
+				RowId = rowId,
+				Value = value
+			};
+			var cmp = DefaultKeyComparer.Instance;
+			foreach (var idx in indices.Values) {
+				try {
+					if (idx.ComputeKey(r)) {
+						if (!idx.HasOldComputedKey) {
+							idx.InsertKey(idx.ComputedKey);
+						} else if (!cmp.Equals(idx.ComputedKey, idx.OldComputedKey)) {
+							idx.DeleteKey(idx.OldComputedKey);
+							idx.InsertKey(idx.ComputedKey);
+						}
+					} else {
+						if (idx.HasOldComputedKey) {
+							idx.DeleteKey(idx.OldComputedKey);
+						}
+					}
+				}
+				catch (Ston.StonException) { }
+				catch (Ston.StonVariantException) { }
+			}
 		}
 
 	}
