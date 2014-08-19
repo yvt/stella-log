@@ -22,13 +22,16 @@ namespace Yavit.StellaDB.Indexer
 		public override object Deserialize (IDictionary<string, object> dictionary, Type type, StonSerializer serializer)
 		{
 			if (type == typeof(IndexParameters)) {
-				var fields = dictionary ["fields"] as IEnumerable<object>;
+				var fields = dictionary ["fields"] as IEnumerable<KeyValuePair<string, object>>;
 				return new IndexParameters () {
-					Fields = from obj in fields
-					         select () => {
-						var dic = (IDictionary<string, object>)obj;
-						return serializer.ConvertToType (dic ["param"], GetTypeForFieldName ((string)dic ["type"]));
-					}
+					Fields = fields.Select (obj => {
+						var dic = (IDictionary<string, object>)obj.Value;
+						var param = serializer.ConvertToType (dic ["param"], GetTypeForFieldName ((string)dic ["type"]));
+						return new IndexParameters.Field() {
+							Name = obj.Key,
+							Parameters = param
+						};
+					}).ToArray()
 				};
 			} else if (type == typeof(NumericKeyParameters)) {
 				return new NumericKeyParameters ();

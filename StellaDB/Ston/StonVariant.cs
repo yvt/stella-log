@@ -4,7 +4,8 @@ using System.Collections.Generic;
 namespace Yavit.StellaDB.Ston
 {
 	/// <summary>
-	/// Class that represents a value of STON. Used for easier query condition construction.
+	/// Class that represents a value of STON. Used for easier query condition construction, and
+	/// direct access of the member of serialized STON.
 	/// </summary>
 	public abstract class StonVariant
 	{
@@ -76,7 +77,7 @@ namespace Yavit.StellaDB.Ston
 
 	public class StaticStonVariant: StonVariant
 	{
-		object obj;
+		readonly object obj;
 		public StaticStonVariant(object val)
 		{
 			obj = val;
@@ -86,6 +87,97 @@ namespace Yavit.StellaDB.Ston
 				return obj;
 			}
 		}
+	}
+
+	public class SerializedStonVariant: StonVariant
+	{
+		readonly StonReader reader;
+		readonly SerializedStonVariant parent;
+		readonly int indexInParent;
+		readonly string keyInParent;
+
+		static readonly StonSerializer defaultSerializer = new StonSerializer();
+
+		object value;
+		bool isValueCached = false;
+
+		public SerializedStonVariant(StonReader reader)
+		{
+			this.reader = reader;
+			if (reader == null)
+				throw new ArgumentNullException ("reader");
+		}
+
+		SerializedStonVariant(SerializedStonVariant parent, int index):
+		this(parent.reader)
+		{
+			this.parent = parent;
+			indexInParent = index;
+			keyInParent = null;
+		}
+		SerializedStonVariant(SerializedStonVariant parent, string key):
+		this(parent.reader)
+		{
+			this.parent = parent;
+			indexInParent = 0;
+			keyInParent = key;
+		}
+
+		public void Locate(int index)
+		{
+			LocateSelf ();
+		
+			if (reader.CurrentNodeType != StonReader.NodeType.List) {
+				throw new StonException ();
+			}
+
+			reader.StartList ();
+			while (index > 0) {
+				reader.Skip ();
+				--index;
+			}
+		}
+
+		public void Locate(string key)
+		{
+			LocateSelf();
+
+			if (reader.CurrentNodeType != StonReader.NodeType.Dictionary) {
+				throw new StonException ();
+			}
+
+			reader.StartDictionary ();
+			while (reader.CurrentNodeType != StonReader.NodeType.EndOfCollection &&
+				!reader.CurrentDictionaryKey.Equals(key)) {
+				reader.Skip ();
+			}
+
+			// Key not found...
+			throw new StonException ();
+		}
+
+		public void LocateSelf()
+		{
+			if (parent == null) {
+				reader.Reset ();
+			} else if (keyInParent != null) {
+				parent.Locate (indexInParent);
+			} else {
+				parent.Locate (keyInParent);
+			}
+		}
+
+		public override object Value {
+			get {
+				if (!isValueCached) {
+					LocateSelf ();
+					value = defaultSerializer.DeserializeObject (reader);
+					isValueCached = true;
+				}
+				return value;
+			}
+		}
+
 	}
 }
 

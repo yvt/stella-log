@@ -463,6 +463,63 @@ namespace Yavit.StellaDB.Ston
 			}
 		}
 
+		/// <summary>
+		/// Skips the current value.
+		/// </summary>
+		public void Skip()
+		{
+			var type = DataType;
+			if (type == DataTypes.EOMLMarker) {
+				throw new InvalidOperationException ("Cannot perform skip on the end of map/list marker.");
+			}
+			int level = state.Count;
+			while (true) {
+				switch (CurrentNodeType) {
+				case NodeType.Dictionary:
+					StartDictionary ();
+					return;
+				case NodeType.List:
+					StartList ();
+					break;
+				case NodeType.EndOfCollection:
+					if (state.Peek() == State.EndOfArray) {
+						EndList ();
+					} else {
+						EndDictionary ();
+					}
+					if (state.Count == level) {
+						return;
+					}
+					break;
+				case NodeType.EndOfDocument:
+					throw new InvalidOperationException ();
+				case NodeType.Null:
+					ReadNull ();
+					return;
+				case NodeType.Integer:
+					ReadInteger ();
+					return;
+				case NodeType.Float:
+					ReadFloat ();
+					return;
+				case NodeType.Double:
+					ReadDouble ();
+					return;
+				case NodeType.Boolean:
+					ReadBoolean ();
+					return;
+				case NodeType.Char:
+					ReadChar ();
+					return;
+				case NodeType.String:
+					ReadString ();
+					return;
+				default:
+					throw new InvalidOperationException ();
+				}
+			}
+		}
+
 		public void StartDictionary()
 		{
 			CheckNotEndOfDocument ();

@@ -147,11 +147,17 @@ namespace Yavit.StellaDB.Ston
 			}
 		}
 
+		internal object DeserializeObject(StonReader reader)
+		{
+			if (reader == null)
+				throw new ArgumentNullException ("reader");
+			return DeserializeImpl (reader);
+		}
 		public object DeserializeObject(byte[] buffer)
 		{
 			if (buffer == null)
 				throw new ArgumentNullException ("buffer");
-			return DeserializeImpl (new StonReader(buffer));
+			return DeserializeObject (new StonReader(buffer));
 		}
 
 		public object Deserialize(byte[] buffer, Type type)
