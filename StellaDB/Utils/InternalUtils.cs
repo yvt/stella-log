@@ -206,6 +206,11 @@ namespace Yavit.StellaDB
 			{
 				return (long)GetUInt64 (offset);
 			}
+			[MethodImpl(MethodImplAggresiveInlining)]
+			public double GetDouble(int offset)
+			{
+				return System.BitConverter.Int64BitsToDouble(GetInt64(offset));
+			}
 
 			[MethodImpl(MethodImplAggresiveInlining)]
 			public void Set(int offset, byte b)
@@ -252,6 +257,12 @@ namespace Yavit.StellaDB
 			{
 				Set (offset, (ulong)b);
 			}
+			[MethodImpl(MethodImplAggresiveInlining)]
+			public void Set(int offset, double b)
+			{
+				Set (offset, System.BitConverter.DoubleToInt64Bits(b));
+			}
+
 
 			[MethodImpl(MethodImplAggresiveInlining)]
 			public ulong GetVariant(int offset, int numBytes)

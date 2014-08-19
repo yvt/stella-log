@@ -12,6 +12,8 @@ namespace Yavit.StellaDB
 
 	public sealed class DefaultKeyComparer: IKeyComparer, System.Collections.Generic.IEqualityComparer<byte[]>
 	{
+		public static readonly DefaultKeyComparer Instance = new DefaultKeyComparer();
+
 		public int Compare (byte[] buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2)
 		{
 			int i = 0;
@@ -63,6 +65,8 @@ namespace Yavit.StellaDB
 
 	public sealed class ReversedKeyComparer: IKeyComparer, System.Collections.Generic.IEqualityComparer<byte[]>
 	{
+		public static readonly ReversedKeyComparer Instance = new ReversedKeyComparer();
+
 		public int Compare (byte[] buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2)
 		{
 			int i = 0;

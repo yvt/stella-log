@@ -67,6 +67,12 @@
     <Compile Include="Ston\DataTypes.cs" />
     <Compile Include="Ston\StonReader.cs" />
     <Compile Include="Ston\StonInteger.cs" />
+    <Compile Include="Table.cs" />
+    <Compile Include="Indexer\QueryOptimizer.cs" />
+    <Compile Include="Utils\NumberComparator.cs" />
+    <Compile Include="Indexer\IndexTypes.cs" />
+    <Compile Include="Ston\StonVariant.cs" />
+    <Compile Include="Indexer\Index.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>
@@ -85,5 +91,6 @@
     <Folder Include="LowLevel\" />
     <Folder Include="Utils\" />
     <Folder Include="Ston\" />
+    <Folder Include="Indexer\" />
   </ItemGroup>
 </Project>
