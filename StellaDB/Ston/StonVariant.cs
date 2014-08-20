@@ -7,7 +7,7 @@ namespace Yavit.StellaDB.Ston
 	/// Class that represents a value of STON. Used for easier query condition construction, and
 	/// direct access of the member of serialized STON.
 	/// </summary>
-	public abstract class StonVariant
+	public abstract class StonVariant: IComparable<double>, IComparable<long>, IComparable<ulong>
 	{
 
 		/// <summary>
@@ -63,7 +63,41 @@ namespace Yavit.StellaDB.Ston
 		}
 
 
+		#region Numeric Comparsions
 
+		// TODO: need to complete this
+
+		public int CompareTo (double other)
+		{
+			throw new NotImplementedException ();
+		}
+		public int CompareTo (ulong other)
+		{
+			throw new NotImplementedException ();
+		}
+		public int CompareTo (long other)
+		{
+			throw new NotImplementedException ();
+		}
+		public static bool operator <  (StonVariant x, double y) { return x.CompareTo(y) < 0; }
+		public static bool operator >  (StonVariant x, double y) { return x.CompareTo(y) > 0; }
+		public static bool operator <= (StonVariant x, double y) { return x.CompareTo(y) <= 0; }
+		public static bool operator >= (StonVariant x, double y) { return x.CompareTo(y) >= 0; }
+		public static bool operator == (StonVariant x, double y) { return x.CompareTo(y) == 0; }
+		public static bool operator != (StonVariant x, double y) { return x.CompareTo(y) != 0; }
+		public static bool operator <  (StonVariant x, long y) { return x.CompareTo(y) < 0; }
+		public static bool operator >  (StonVariant x, long y) { return x.CompareTo(y) > 0; }
+		public static bool operator <= (StonVariant x, long y) { return x.CompareTo(y) <= 0; }
+		public static bool operator >= (StonVariant x, long y) { return x.CompareTo(y) >= 0; }
+		public static bool operator != (StonVariant x, long y) { return x.CompareTo(y) != 0; }
+		public static bool operator <  (StonVariant x, ulong y) { return x.CompareTo(y) < 0; }
+		public static bool operator >  (StonVariant x, ulong y) { return x.CompareTo(y) > 0; }
+		public static bool operator <= (StonVariant x, ulong y) { return x.CompareTo(y) <= 0; }
+		public static bool operator >= (StonVariant x, ulong y) { return x.CompareTo(y) >= 0; }
+		public static bool operator != (StonVariant x, ulong y) { return x.CompareTo(y) != 0; }
+		#endregion
+
+		// TODO: binary comparsion
 	}
 
 	public class StonVariantException: Exception

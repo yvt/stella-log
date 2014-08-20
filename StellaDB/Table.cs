@@ -73,7 +73,7 @@ namespace Yavit.StellaDB
 		}
 		#endregion
 
-		long RowIdForKey(byte[] key)
+		long DecodeRowIdForKey(byte[] key)
 		{
 			return new InternalUtils.BitConverter (key).GetInt64 (0);
 		}

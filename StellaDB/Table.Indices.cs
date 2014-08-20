@@ -122,6 +122,34 @@ namespace Yavit.StellaDB
 		Dictionary<string[], TableIndex> indices = 
 			new Dictionary<string[], TableIndex>(Utils.ArrayComparer<string>.Default);
 
+		Indexer.QueryOptimizer optimizer;
+
+		void InvalidateQueryOptimizer()
+		{
+			optimizer = null;
+		}
+
+		void EnsureQueryOptimizer()
+		{
+			if (optimizer != null) {
+				return;
+			}
+
+			EnsureLoaded ();
+
+			optimizer = new Indexer.QueryOptimizer ();
+			foreach (var idx in indices) {
+				optimizer.RegisterIndex (new Indexer.QueryOptimizer.Index() {
+					Cardinality = 1.0,
+					Parts = (from field in idx.Value.Index.GetFields()
+						select new Indexer.QueryOptimizer.IndexPart() {
+							Key = field.Name,
+							KeyProvider = field.KeyProvider
+						}).ToArray()
+				});
+			}
+		}
+
 		void LoadIndices()
 		{
 			indices.Clear ();
@@ -129,6 +157,7 @@ namespace Yavit.StellaDB
 				// Table is not materialized
 				return;
 			}
+			optimizer = null;
 
 			foreach (var keyinfo in database.MasterTable.GetIndicesOfTable(store.BlockId)) {
 				var idx = new TableIndex (this, keyinfo.IndexId, keyinfo.Info);
@@ -169,6 +198,7 @@ namespace Yavit.StellaDB
 			var tidx = new TableIndex (this, idx);
 
 			indices.Add (tidx.GetEntryNames (), tidx);
+			InvalidateQueryOptimizer ();
 			database.MasterTable.AddIndexToTable (TableId, tidx.IndexId, tidx.GetInfo());
 
 			// Add items to the index.
@@ -177,7 +207,7 @@ namespace Yavit.StellaDB
 					var reader = new Ston.StonReader (row.ReadValue ());
 					var val = new Ston.SerializedStonVariant (reader);
 					var r = new Indexer.Index.Row () {
-						RowId = RowIdForKey(row.GetKey()),
+						RowId = DecodeRowIdForKey(row.GetKey()),
 						Value = val
 					};
 					if (tidx.ComputeKey(r)) {
@@ -204,6 +234,7 @@ namespace Yavit.StellaDB
 				database.MasterTable.RemoveIndexFromTable (TableId, tidx.IndexId);
 				tidx.Drop ();
 				indices.Remove (entryNames);
+				InvalidateQueryOptimizer ();
 			}
 		}
 
@@ -216,6 +247,8 @@ namespace Yavit.StellaDB
 				idx.Value.Drop ();
 			}
 			indices.Clear ();
+
+			InvalidateQueryOptimizer ();
 		}
 
 		void InsertRowToIndex(long rowId, Ston.StonVariant value)
