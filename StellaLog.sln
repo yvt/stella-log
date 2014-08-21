@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StellaDBTest", "StellaDBTes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StellaDBBenchmark", "StellaDBBenchmark\StellaDBBenchmark.csproj", "{D7C2F01E-08E0-48C8-B7F4-B96F552C71BD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StellaLogCore", "StellaLogCore\StellaLogCore.csproj", "{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -21,6 +23,10 @@ Global
 		{201F7E7E-51A8-4EF7-A6F1-438661447567}.Debug|x86.Build.0 = Debug|Any CPU
 		{201F7E7E-51A8-4EF7-A6F1-438661447567}.Release|x86.ActiveCfg = Release|Any CPU
 		{201F7E7E-51A8-4EF7-A6F1-438661447567}.Release|x86.Build.0 = Release|Any CPU
+		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Debug|x86.Build.0 = Debug|Any CPU
+		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Release|x86.ActiveCfg = Release|Any CPU
+		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Release|x86.Build.0 = Release|Any CPU
 		{D7C2F01E-08E0-48C8-B7F4-B96F552C71BD}.Debug|x86.ActiveCfg = Debug|x86
 		{D7C2F01E-08E0-48C8-B7F4-B96F552C71BD}.Debug|x86.Build.0 = Debug|x86
 		{D7C2F01E-08E0-48C8-B7F4-B96F552C71BD}.Release|x86.ActiveCfg = Release|x86
