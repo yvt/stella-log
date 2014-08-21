@@ -2,6 +2,7 @@
 using NUnit.Framework.SyntaxHelpers;
 using System;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Yavit.StellaDB.Test
 {
@@ -149,7 +150,7 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
-		void QueryTestRowIdFilter(Predicate<long> pred)
+		void QueryTestRowIdFilter(Expression<Func<long, Ston.StonVariant, bool>> pred)
 		{
 			var db = Database.CreateMemoryDatabase ();
 			var table = db ["table"];
@@ -159,33 +160,34 @@ namespace Yavit.StellaDB.Test
 				table.Insert (i, i, false);
 			}
 
-			var stmt = table.Prepare ((rowId, value) => pred(rowId));
+			var stmt = table.Prepare (pred);
 			var result = (from e in table.Query (stmt)
 				select e.ToObject<int> ()).ToArray();
 
-			var expected = items.Where (v => pred (v)).ToArray();
+			var compiled = pred.Compile ();
+			var expected = items.Where (v => compiled (v, null)).ToArray();
 
 			Assert.That (result, Is.EquivalentTo (expected));
 		}
 
 		[Test] public void QueryTestRowIdFilter1()
-		{ QueryTestRowIdFilter(value => value >= 42); }
+		{ QueryTestRowIdFilter((value, other) => value >= 42); }
 		[Test] public void QueryTestRowIdFilter2()
-		{ QueryTestRowIdFilter(value => value > 42); }
+		{ QueryTestRowIdFilter((value, other) => value > 42); }
 		[Test] public void QueryTestRowIdFilter3()
-		{ QueryTestRowIdFilter(value => value <= 42); }
+		{ QueryTestRowIdFilter((value, other) => value <= 42); }
 		[Test] public void QueryTestRowIdFilter4()
-		{ QueryTestRowIdFilter(value => value < 42); }
+		{ QueryTestRowIdFilter((value, other) => value < 42); }
 		[Test] public void QueryTestRowIdFilter5()
-		{ QueryTestRowIdFilter(value => value == 42); }
+		{ QueryTestRowIdFilter((value, other) => value == 42); }
 		[Test] public void QueryTestRowIdFilter6()
-		{ QueryTestRowIdFilter(value => value != 42); }
+		{ QueryTestRowIdFilter((value, other) => value != 42); }
 		[Test] public void QueryTestRowIdFilter7()
-		{ QueryTestRowIdFilter(value => true); }
+		{ QueryTestRowIdFilter((value, other) => true); }
 		[Test] public void QueryTestRowIdFilter8()
-		{ QueryTestRowIdFilter(value => false); }
+		{ QueryTestRowIdFilter((value, other) => false); }
 
-		void QueryTestValueFilter(Predicate<Ston.StonVariant> pred)
+		void QueryTestValueFilter(Expression<Func<long, Ston.StonVariant, bool>> pred)
 		{
 			var db = Database.CreateMemoryDatabase ();
 			var table = db ["table"];
@@ -195,31 +197,32 @@ namespace Yavit.StellaDB.Test
 				table.Insert (i, i, false);
 			}
 
-			var stmt = table.Prepare ((rowId, value) => pred(value));
+			var stmt = table.Prepare (pred);
 			var result = (from e in table.Query (stmt)
 				select e.ToObject<int> ()).ToArray();
 
-			var expected = items.Where (v => pred (new Ston.StaticStonVariant(v))).ToArray();
+			var compiled = pred.Compile ();
+			var expected = items.Where (v => compiled (v, new Ston.StaticStonVariant(v))).ToArray();
 
 			Assert.That (result, Is.EquivalentTo (expected));
 		}
 
 		[Test] public void QueryTestValueFilter1()
-		{ QueryTestValueFilter(value => value >= 42); }
+		{ QueryTestValueFilter((other, value) => value >= 42); }
 		[Test] public void QueryTestValueFilter2()
-		{ QueryTestValueFilter(value => value > 42); }
+		{ QueryTestValueFilter((other, value) => value > 42); }
 		[Test] public void QueryTestValueFilter3()
-		{ QueryTestValueFilter(value => value <= 42); }
+		{ QueryTestValueFilter((other, value) => value <= 42); }
 		[Test] public void QueryTestValueFilter4()
-		{ QueryTestValueFilter(value => value < 42); }
+		{ QueryTestValueFilter((other, value) => value < 42); }
 		[Test] public void QueryTestValueFilter5()
-		{ QueryTestValueFilter(value => value == 42); }
+		{ QueryTestValueFilter((other, value) => value == 42); }
 		[Test] public void QueryTestValueFilter6()
-		{ QueryTestValueFilter(value => value != 42); }
+		{ QueryTestValueFilter((other, value) => value != 42); }
 		[Test] public void QueryTestValueFilter7()
-		{ QueryTestValueFilter(value => true); }
+		{ QueryTestValueFilter((other, value) => true); }
 		[Test] public void QueryTestValueFilter8()
-		{ QueryTestValueFilter(value => false); }
+		{ QueryTestValueFilter((other, value) => false); }
 
 
 

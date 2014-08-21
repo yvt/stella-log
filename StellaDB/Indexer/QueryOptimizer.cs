@@ -283,8 +283,6 @@ namespace Yavit.StellaDB.Indexer
 							minRowId = val2;
 						}
 						break;
-					default:
-						throw new ArgumentOutOfRangeException ();
 					}
 					val2 = val;
 					switch (clause.Type) {
@@ -300,8 +298,6 @@ namespace Yavit.StellaDB.Indexer
 							maxRowId = val2;
 						}
 						break;
-					default:
-						throw new ArgumentOutOfRangeException ();
 					}
 				}
 
