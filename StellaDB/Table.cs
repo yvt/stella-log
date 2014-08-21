@@ -63,7 +63,8 @@ namespace Yavit.StellaDB
 
 			if (store == null) {
 				var param = new LowLevel.BTreeParameters ();
-				param.MaximumKeyLength = 8; // Row Id
+				// TODO: make data size variable?
+				param.MaximumKeyLength = 8 + 96; // Row Id + Data
 				store = database.LowLevelDatabase.CreateBTree (param, ReversedKeyComparer.Instance);
 				database.MasterTable.AddTable (tableNameBytes, store.BlockId);
 
