@@ -232,8 +232,8 @@ namespace Yavit.StellaDB.Indexer
 						cl.Right = binExpr.Right;
 					}
 
-					if (CheckExpressionNotDependentOnParameter(cl.Right) ||
-						cl.Right.Type != typeof(long)) {
+					if (CheckExpressionNotDependentOnParameter(cl.Right) &&
+						cl.Right.Type == typeof(long)) {
 						rowIdClauses.Add(cl);
 					}
 				}
@@ -256,12 +256,14 @@ namespace Yavit.StellaDB.Indexer
 		Func<ProcessResult> ProcessWithRowIdIndex(Expression<Func<long, Ston.StonVariant, bool>> expr,
 			List<Clause> clauses, SortKey[] sortKeys)
 		{
-			var compiledClauses =
+			var compiledClausesEnumerable =
 				from clause in clauses
 				select new {
 					Type = clause.Type,
 					Func = Expression.Lambda<Func<long>>(clause.Right).Compile()
 				};
+			var compiledClauses = compiledClausesEnumerable.ToArray ();
+			var compiledExpr = expr.Compile ();
 
 			return () => {
 				long? minRowId = null;
@@ -303,7 +305,7 @@ namespace Yavit.StellaDB.Indexer
 
 				var result = new ProcessResult();
 				result.RowIdUsage = new RowIdUsage();
-				result.Expression = expr.Compile();
+				result.Expression = compiledExpr;
 
 				int firstNonOptimizedSortKeyIndex = 0;
 				while (firstNonOptimizedSortKeyIndex < sortKeys.Length) {
