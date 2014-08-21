@@ -1,6 +1,5 @@
 ﻿using NUnit.Framework;
 using System;
-using NUnit.Framework.SyntaxHelpers;
 
 namespace Yavit.StellaDB.Test
 {
@@ -29,34 +28,34 @@ namespace Yavit.StellaDB.Test
 		}
 
 		[Test]
-		public void SimpleReadWrite()
+		public void SimpleReadWrite([Values(0, 1, 100, 10000, 1000000)] int bytes)
 		{
 			CreateBlob (b => {
-				byte[] data = Utils.GenerateRandomBytes(20000);
+				byte[] data = Utils.GenerateRandomBytes(bytes);
 				byte[] buf = (byte[])data.Clone();
 
 				b.WriteAllBytes(buf);
-				Assert.That(buf, Is.EquivalentTo(data));
+				Assert.That(buf, Is.EqualTo(data));
 
 				buf = b.ReadAllBytes();
-				Assert.That(buf, Is.EquivalentTo(data));
+				Assert.That(buf, Is.EqualTo(data));
 
 			});
 		}
 
 
 		[Test]
-		public void Drop()
+		public void Drop([Values(0, 1, 100, 10000, 1000000)] int bytes)
 		{
 			CreateBlob (b => {
-				byte[] data = Utils.GenerateRandomBytes(200000);
+				byte[] data = Utils.GenerateRandomBytes(bytes);
 				byte[] buf = (byte[])data.Clone();
 				long siz = b.Database.NumAllocatedBlocks;
 
 				b.WriteAllBytes(buf);
-				Assert.That(buf, Is.EquivalentTo(data));
+				Assert.That(buf, Is.EqualTo(data));
 
-				Assert.That(b.Database.NumAllocatedBlocks, Is.GreaterThan(siz));
+				Assert.That(b.Database.NumAllocatedBlocks, Is.GreaterThanOrEqualTo(siz));
 
 				b.Drop();
 

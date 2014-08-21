@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using NUnit.Framework;
-using NUnit.Framework.SyntaxHelpers;
 
 namespace Yavit.StellaDB.Test
 {
@@ -34,7 +33,7 @@ namespace Yavit.StellaDB.Test
 				byte[] buf = new byte[d.Length];
 				Buffer.BlockCopy(d, 0, buf, 0, d.Length);
 				s.Write (buf, 0, buf.Length);
-				Assert.That(buf, Is.EquivalentTo(d));
+				Assert.That(buf, Is.EqualTo(d));
 			});
 		}
 
@@ -47,11 +46,11 @@ namespace Yavit.StellaDB.Test
 				byte[] buf = new byte[d.Length];
 				Buffer.BlockCopy(d, 0, buf, 0, d.Length);
 				s.Write (buf, 0, buf.Length);
-				Assert.That(buf, Is.EquivalentTo(d));
+				Assert.That(buf, Is.EqualTo(d));
 
 				s.Position = 0;
 				Assert.That(s.Read(buf, 0, buf.Length), Is.EqualTo(buf.Length));
-				Assert.That(buf, Is.EquivalentTo(d));
+				Assert.That(buf, Is.EqualTo(d));
 			});
 		}
 
@@ -64,7 +63,7 @@ namespace Yavit.StellaDB.Test
 				byte[] buf = new byte[d.Length];
 				Buffer.BlockCopy(d, 0, buf, 0, d.Length);
 				s.Write (buf, 0, buf.Length);
-				Assert.That(buf, Is.EquivalentTo(d));
+				Assert.That(buf, Is.EqualTo(d));
 
 				Assert.That(s.Length, Is.EqualTo(d.Length));
 
@@ -75,7 +74,7 @@ namespace Yavit.StellaDB.Test
 
 				s.Position = 0;
 				Assert.That(s.Read(buf, 0, buf.Length), Is.EqualTo(newLength));
-				Assert.That(buf, Is.EquivalentTo(d));
+				Assert.That(buf, Is.EqualTo(d));
 			});
 		}
 

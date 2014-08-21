@@ -1,5 +1,4 @@
 ﻿using NUnit.Framework;
-using NUnit.Framework.SyntaxHelpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -104,47 +103,20 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
-		[Test] public void AddAndEnumAscending1_0()     { AddAndEnumAscending (TestEnumerator1 (0)); }
-		[Test] public void AddAndEnumAscending1_1()     { AddAndEnumAscending (TestEnumerator1 (1)); }
-		[Test] public void AddAndEnumAscending1_10()    { AddAndEnumAscending (TestEnumerator1 (10)); }
-		[Test] public void AddAndEnumAscending1_100()   { AddAndEnumAscending (TestEnumerator1 (100)); }
-		[Test] public void AddAndEnumAscending1_1000()  { AddAndEnumAscending (TestEnumerator1 (1000)); }
-		[Test] public void AddAndEnumAscending1_10000() { AddAndEnumAscending (TestEnumerator1 (10000)); }
+		[Test] public void AddAndEnumAscending1([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumAscending (TestEnumerator1 (count)); }
+		[Test] public void AddAndEnumAscending2([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumAscending (TestEnumerator2 (count)); }
+		[Test] public void AddAndEnumAscending3([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumAscending (TestEnumerator3 (count)); }
 
-		[Test] public void AddAndEnumAscending2_0()     { AddAndEnumAscending (TestEnumerator2 (0)); }
-		[Test] public void AddAndEnumAscending2_1()     { AddAndEnumAscending (TestEnumerator2 (1)); }
-		[Test] public void AddAndEnumAscending2_10()    { AddAndEnumAscending (TestEnumerator2 (10)); }
-		[Test] public void AddAndEnumAscending2_100()   { AddAndEnumAscending (TestEnumerator2 (100)); }
-		[Test] public void AddAndEnumAscending2_1000()  { AddAndEnumAscending (TestEnumerator2 (1000)); }
-		[Test] public void AddAndEnumAscending2_10000() { AddAndEnumAscending (TestEnumerator2 (10000)); }
+		[Test] public void AddAndEnumDescending1([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumDescending (TestEnumerator1 (count)); }
+		[Test] public void AddAndEnumDescending2([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumDescending (TestEnumerator2 (count)); }
+		[Test] public void AddAndEnumDescending3([Values(0, 1, 10, 100, 1000, 10000)]int count)     
+		{ AddAndEnumDescending (TestEnumerator3 (count)); }
 
-		[Test] public void AddAndEnumAscending3_0()     { AddAndEnumAscending (TestEnumerator3 (0)); }
-		[Test] public void AddAndEnumAscending3_1()     { AddAndEnumAscending (TestEnumerator3 (1)); }
-		[Test] public void AddAndEnumAscending3_10()    { AddAndEnumAscending (TestEnumerator3 (10)); }
-		[Test] public void AddAndEnumAscending3_100()   { AddAndEnumAscending (TestEnumerator3 (100)); }
-		[Test] public void AddAndEnumAscending3_1000()  { AddAndEnumAscending (TestEnumerator3 (1000)); }
-		[Test] public void AddAndEnumAscending3_10000() { AddAndEnumAscending (TestEnumerator3 (10000)); }
-
-		[Test] public void AddAndEnumDescending1_0()     { AddAndEnumDescending (TestEnumerator1 (0)); }
-		[Test] public void AddAndEnumDescending1_1()     { AddAndEnumDescending (TestEnumerator1 (1)); }
-		[Test] public void AddAndEnumDescending1_10()    { AddAndEnumDescending (TestEnumerator1 (10)); }
-		[Test] public void AddAndEnumDescending1_100()   { AddAndEnumDescending (TestEnumerator1 (100)); }
-		[Test] public void AddAndEnumDescending1_1000()  { AddAndEnumDescending (TestEnumerator1 (1000)); }
-		[Test] public void AddAndEnumDescending1_10000() { AddAndEnumDescending (TestEnumerator1 (10000)); }
-																	
-		[Test] public void AddAndEnumDescending2_0()     { AddAndEnumDescending (TestEnumerator2 (0)); }
-		[Test] public void AddAndEnumDescending2_1()     { AddAndEnumDescending (TestEnumerator2 (1)); }
-		[Test] public void AddAndEnumDescending2_10()    { AddAndEnumDescending (TestEnumerator2 (10)); }
-		[Test] public void AddAndEnumDescending2_100()   { AddAndEnumDescending (TestEnumerator2 (100)); }
-		[Test] public void AddAndEnumDescending2_1000()  { AddAndEnumDescending (TestEnumerator2 (1000)); }
-		[Test] public void AddAndEnumDescending2_10000() { AddAndEnumDescending (TestEnumerator2 (10000)); }
-																	
-		[Test] public void AddAndEnumDescending3_0()     { AddAndEnumDescending (TestEnumerator3 (0)); }
-		[Test] public void AddAndEnumDescending3_1()     { AddAndEnumDescending (TestEnumerator3 (1)); }
-		[Test] public void AddAndEnumDescending3_10()    { AddAndEnumDescending (TestEnumerator3 (10)); }
-		[Test] public void AddAndEnumDescending3_100()   { AddAndEnumDescending (TestEnumerator3 (100)); }
-		[Test] public void AddAndEnumDescending3_1000()  { AddAndEnumDescending (TestEnumerator3 (1000)); }
-		[Test] public void AddAndEnumDescending3_10000() { AddAndEnumDescending (TestEnumerator3 (10000)); }
 	}
 }
 

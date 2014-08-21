@@ -171,83 +171,9 @@ namespace Yavit.StellaDB.Test
 				db.Flush ();
 			}
 		}
-		[Test ()]
-		public void AddAndRemove2_1 ()
-		{
-			AddAndRemove2 (1);
-		}
-		[Test ()]
-		public void AddAndRemove2_10 ()
-		{
-			AddAndRemove2 (10);
-		}
-		[Test ()]
-		public void AddAndRemove2_100 ()
-		{
-			AddAndRemove2 (100);
-		}
-		[Test ()]
-		public void AddAndRemove2_1000 ()
-		{
-			AddAndRemove2 (1000);
-		}
-		[Test ()]
-		public void AddAndRemove2_10000 ()
-		{
-			AddAndRemove2 (10000);
-		}
-		[Test ()]
-		public void AddAndRemove3_1 ()
-		{
-			AddAndRemove3 (1);
-		}
-		[Test ()]
-		public void AddAndRemove3_10 ()
-		{
-			AddAndRemove3 (10);
-		}
-		[Test ()]
-		public void AddAndRemove3_100 ()
-		{
-			AddAndRemove3 (100);
-		}
-		[Test ()]
-		public void AddAndRemove3_1000 ()
-		{
-			AddAndRemove3 (1000);
-		}
-		[Test ()]
-		public void AddAndRemove3_10000 ()
-		{
-			AddAndRemove3 (10000);
-		}
-		[Test ()]
-		public void AddAndRemove4_1 ()
-		{
-			AddAndRemove4 (1);
-		}
-		[Test ()]
-		public void AddAndRemove4_10 ()
-		{
-			AddAndRemove4 (10);
-		}
-		[Test ()]
-		public void AddAndRemove4_100 ()
-		{
-			AddAndRemove4 (100);
-		}
-		[Test ()]
-		public void AddAndRemove4_1000 ()
-		{
-			AddAndRemove4 (1000);
-		}
-		[Test ()]
-		public void AddAndRemove4_10000 ()
-		{
-			AddAndRemove4 (10000);
-		}
 
-		private void AddAndRemove2 (int count)
+		[Test]
+		public void AddAndRemove2 ([Values(0, 1, 10, 100, 1000, 10000)] int count)
 		{
 			var keys = new List<byte[]> ();
 
@@ -264,7 +190,9 @@ namespace Yavit.StellaDB.Test
 
 			AddAndRemove (keys);
 		}
-		private void AddAndRemove3 (int count)
+
+		[Test]
+		public void AddAndRemove3 ([Values(0, 1, 10, 100, 1000, 10000)] int count)
 		{
 			var keys = new Dictionary<int, byte[]> ();
 			var r = new Random (2);
@@ -277,7 +205,9 @@ namespace Yavit.StellaDB.Test
 
 			AddAndRemove (keys.Values);
 		}
-		private void AddAndRemove4 (int count)
+
+		[Test]
+		public void AddAndRemove4 ([Values(0, 1, 10, 100, 1000, 10000)] int count)
 		{
 			var keys = new List<byte[]> ();
 
@@ -370,19 +300,19 @@ namespace Yavit.StellaDB.Test
 		}
 
 		[Test]
-		public void AddAndRemoveQueued1 ()
+		public void AddAndRemoveQueued1 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
-			AddAndRemove (AddAndRemoveQueuedEnumerator1(10000));
+			AddAndRemove (AddAndRemoveQueuedEnumerator1(count));
 		}
 		[Test]
-		public void AddAndRemoveQueued2 ()
+		public void AddAndRemoveQueued2 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
-			AddAndRemove (AddAndRemoveQueuedEnumerator2(10000));
+			AddAndRemove (AddAndRemoveQueuedEnumerator2(count));
 		}
 		[Test]
-		public void AddAndRemoveQueued3 ()
+		public void AddAndRemoveQueued3 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
-			AddAndRemove (AddAndRemoveQueuedEnumerator3(10000));
+			AddAndRemove (AddAndRemoveQueuedEnumerator3(count));
 		}
 		private static IEnumerable<byte[]> AddAndRemoveQueuedEnumerator1(int count)
 		{
@@ -450,14 +380,8 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
-		[Test] public void AddAndDrop_0 () { AddAndDrop (0); }
-		[Test] public void AddAndDrop_1 () { AddAndDrop (1); }
-		[Test] public void AddAndDrop_10 () { AddAndDrop (10); }
-		[Test] public void AddAndDrop_100 () { AddAndDrop (100); }
-		[Test] public void AddAndDrop_1000 () { AddAndDrop (1000); }
-		[Test] public void AddAndDrop_10000 () { AddAndDrop (10000); }
-
-		private void AddAndDrop (int count)
+		[Test]
+		public void AddAndDrop ([Values(0, 1, 10, 100, 1000, 10000)]int count)
 		{
 			var keys = new Dictionary<int, byte[]> ();
 			var r = new Random (2);

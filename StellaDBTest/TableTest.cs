@@ -1,5 +1,4 @@
 ﻿using NUnit.Framework;
-using NUnit.Framework.SyntaxHelpers;
 using System;
 using System.Linq;
 using System.Linq.Expressions;
@@ -137,11 +136,11 @@ namespace Yavit.StellaDB.Test
 		}
 
 		[Test]
-		public void InsertMany()
+		public void InsertMany([Values(0, 1, 10, 100, 1000)] int count)
 		{
 			var db = Database.CreateMemoryDatabase ();
 			var table = db ["table"];
-			var items = Enumerable.Range (1, 100).ToArray();
+			var items = Enumerable.Range (1, count).ToArray();
 			foreach (var i in items) {
 				table.Insert (i, i, false);
 			}
@@ -170,18 +169,18 @@ namespace Yavit.StellaDB.Test
 			Assert.That (result, Is.EquivalentTo (expected));
 		}
 
-		[Test] public void QueryTestRowIdFilter1()
-		{ QueryTestRowIdFilter((value, other) => value >= 42); }
-		[Test] public void QueryTestRowIdFilter2()
-		{ QueryTestRowIdFilter((value, other) => value > 42); }
-		[Test] public void QueryTestRowIdFilter3()
-		{ QueryTestRowIdFilter((value, other) => value <= 42); }
-		[Test] public void QueryTestRowIdFilter4()
-		{ QueryTestRowIdFilter((value, other) => value < 42); }
-		[Test] public void QueryTestRowIdFilter5()
-		{ QueryTestRowIdFilter((value, other) => value == 42); }
-		[Test] public void QueryTestRowIdFilter6()
-		{ QueryTestRowIdFilter((value, other) => value != 42); }
+		[Test] public void QueryTestRowIdFilter1([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value >= param); }
+		[Test] public void QueryTestRowIdFilter2([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value > param); }
+		[Test] public void QueryTestRowIdFilter3([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value <= param); }
+		[Test] public void QueryTestRowIdFilter4([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value < param); }
+		[Test] public void QueryTestRowIdFilter5([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value == param); }
+		[Test] public void QueryTestRowIdFilter6([Range(1, 100, 17)] int param)
+		{ QueryTestRowIdFilter((value, other) => value != param); }
 		[Test] public void QueryTestRowIdFilter7()
 		{ QueryTestRowIdFilter((value, other) => true); }
 		[Test] public void QueryTestRowIdFilter8()
@@ -207,18 +206,18 @@ namespace Yavit.StellaDB.Test
 			Assert.That (result, Is.EquivalentTo (expected));
 		}
 
-		[Test] public void QueryTestValueFilter1()
-		{ QueryTestValueFilter((other, value) => value >= 42); }
-		[Test] public void QueryTestValueFilter2()
-		{ QueryTestValueFilter((other, value) => value > 42); }
-		[Test] public void QueryTestValueFilter3()
-		{ QueryTestValueFilter((other, value) => value <= 42); }
-		[Test] public void QueryTestValueFilter4()
-		{ QueryTestValueFilter((other, value) => value < 42); }
-		[Test] public void QueryTestValueFilter5()
-		{ QueryTestValueFilter((other, value) => value == 42); }
-		[Test] public void QueryTestValueFilter6()
-		{ QueryTestValueFilter((other, value) => value != 42); }
+		[Test] public void QueryTestValueFilter1([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value >= param); }
+		[Test] public void QueryTestValueFilter2([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value > param); }
+		[Test] public void QueryTestValueFilter3([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value <= param); }
+		[Test] public void QueryTestValueFilter4([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value < param); }
+		[Test] public void QueryTestValueFilter5([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value == param); }
+		[Test] public void QueryTestValueFilter6([Range(1, 100, 17)] int param)
+		{ QueryTestValueFilter((other, value) => value != param); }
 		[Test] public void QueryTestValueFilter7()
 		{ QueryTestValueFilter((other, value) => true); }
 		[Test] public void QueryTestValueFilter8()
