@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Yavit.StellaDB.Utils;
 
 namespace Yavit.StellaDB.Ston
 {
@@ -62,6 +63,98 @@ namespace Yavit.StellaDB.Ston
 			}
 		}
 
+		public override bool Equals (object obj)
+		{
+			var convertible1 = Value as IConvertible;
+			if (convertible1 == null)
+				return object.Equals (this, obj);
+			var convertible2 = obj as IConvertible;
+			if (convertible2 == null)
+				return object.Equals (this, obj);
+			switch (convertible1.GetTypeCode ()) {
+			case TypeCode.String:
+				if (convertible2.GetTypeCode() == TypeCode.String) {
+					return string.Equals (convertible1.ToString (null), convertible2.ToString (null));
+				}
+				break;
+			case TypeCode.SByte:
+			case TypeCode.Byte:
+			case TypeCode.Int16:
+			case TypeCode.UInt16:
+			case TypeCode.Int32:
+			case TypeCode.UInt32:
+			case TypeCode.Int64:
+				var lval = convertible1.ToInt64 (null);
+				switch (convertible2.GetTypeCode ()) {
+				case TypeCode.SByte:
+				case TypeCode.Byte:
+				case TypeCode.Int16:
+				case TypeCode.UInt16:
+				case TypeCode.Int32:
+				case TypeCode.UInt32:
+				case TypeCode.Int64:
+					return lval == convertible2.ToInt64 (null);
+				case TypeCode.UInt64:
+					return lval.CompareTo2 (convertible2.ToUInt64 (null)) == 0;
+				case TypeCode.Single:
+				case TypeCode.Double:
+					return lval.CompareTo2 (convertible2.ToDouble (null)) == 0;
+				default:
+					break;
+				}
+				break;
+			case TypeCode.UInt64:
+				var ulval = convertible1.ToUInt64 (null);
+				switch (convertible2.GetTypeCode ()) {
+				case TypeCode.SByte:
+				case TypeCode.Byte:
+				case TypeCode.Int16:
+				case TypeCode.UInt16:
+				case TypeCode.Int32:
+				case TypeCode.UInt32:
+				case TypeCode.Int64:
+					return ulval.CompareTo2 (convertible2.ToInt64 (null)) == 0;
+				case TypeCode.UInt64:
+					return ulval == convertible2.ToUInt64 (null);
+				case TypeCode.Single:
+				case TypeCode.Double:
+					return ulval.CompareTo2 (convertible2.ToDouble (null)) == 0;
+				default:
+					break;
+				}
+				break;
+			case TypeCode.Single:
+			case TypeCode.Double:
+				var dval = convertible1.ToDouble (null);
+				switch (convertible2.GetTypeCode ()) {
+				case TypeCode.SByte:
+				case TypeCode.Byte:
+				case TypeCode.Int16:
+				case TypeCode.UInt16:
+				case TypeCode.Int32:
+				case TypeCode.UInt32:
+				case TypeCode.Int64:
+					return dval.CompareTo2 (convertible2.ToInt64 (null)) == 0;
+				case TypeCode.UInt64:
+					return dval.CompareTo2 (convertible2.ToUInt64 (null)) == 0;
+				case TypeCode.Single:
+				case TypeCode.Double:
+					return dval == convertible2.ToDouble (null);
+				default:
+					break;
+				}
+				break;
+			default:
+				break;
+			}
+			return object.Equals (this, obj);
+		}
+
+		public override int GetHashCode ()
+		{
+			// TODO: GetHashCode
+			return base.GetHashCode ();
+		}
 
 		#region Numeric Comparsions
 
@@ -69,15 +162,72 @@ namespace Yavit.StellaDB.Ston
 
 		public int CompareTo (double other)
 		{
-			throw new NotImplementedException ();
+			var convertible = Value as IConvertible;
+			if (convertible == null)
+				throw new StonVariantException ();
+			switch (convertible.GetTypeCode ()) {
+			case TypeCode.SByte:
+			case TypeCode.Byte:
+			case TypeCode.Int16:
+			case TypeCode.UInt16:
+			case TypeCode.Int32:
+			case TypeCode.UInt32:
+			case TypeCode.Int64:
+				return convertible.ToInt64 (null).CompareTo2 (other);
+			case TypeCode.UInt64:
+				return convertible.ToUInt64 (null).CompareTo2 (other);
+			case TypeCode.Single:
+			case TypeCode.Double:
+				return convertible.ToDouble (null).CompareTo (other);
+			default:
+				throw new StonVariantException ();
+			}
 		}
 		public int CompareTo (ulong other)
 		{
-			throw new NotImplementedException ();
+			var convertible = Value as IConvertible;
+			if (convertible == null)
+				throw new StonVariantException ();
+			switch (convertible.GetTypeCode ()) {
+			case TypeCode.SByte:
+			case TypeCode.Byte:
+			case TypeCode.Int16:
+			case TypeCode.UInt16:
+			case TypeCode.Int32:
+			case TypeCode.UInt32:
+			case TypeCode.Int64:
+				return convertible.ToInt64 (null).CompareTo2 (other);
+			case TypeCode.UInt64:
+				return convertible.ToUInt64 (null).CompareTo (other);
+			case TypeCode.Single:
+			case TypeCode.Double:
+				return convertible.ToDouble (null).CompareTo2 (other);
+			default:
+				throw new StonVariantException ();
+			}
 		}
 		public int CompareTo (long other)
 		{
-			throw new NotImplementedException ();
+			var convertible = Value as IConvertible;
+			if (convertible == null)
+				throw new StonVariantException ();
+			switch (convertible.GetTypeCode ()) {
+			case TypeCode.SByte:
+			case TypeCode.Byte:
+			case TypeCode.Int16:
+			case TypeCode.UInt16:
+			case TypeCode.Int32:
+			case TypeCode.UInt32:
+			case TypeCode.Int64:
+				return convertible.ToInt64 (null).CompareTo (other);
+			case TypeCode.UInt64:
+				return convertible.ToUInt64 (null).CompareTo2 (other);
+			case TypeCode.Single:
+			case TypeCode.Double:
+				return convertible.ToDouble (null).CompareTo2 (other);
+			default:
+				throw new StonVariantException ();
+			}
 		}
 		public static bool operator <  (StonVariant x, double y) { return x.CompareTo(y) < 0; }
 		public static bool operator >  (StonVariant x, double y) { return x.CompareTo(y) > 0; }
@@ -89,11 +239,13 @@ namespace Yavit.StellaDB.Ston
 		public static bool operator >  (StonVariant x, long y) { return x.CompareTo(y) > 0; }
 		public static bool operator <= (StonVariant x, long y) { return x.CompareTo(y) <= 0; }
 		public static bool operator >= (StonVariant x, long y) { return x.CompareTo(y) >= 0; }
+		public static bool operator == (StonVariant x, long y) { return x.CompareTo(y) == 0; }
 		public static bool operator != (StonVariant x, long y) { return x.CompareTo(y) != 0; }
 		public static bool operator <  (StonVariant x, ulong y) { return x.CompareTo(y) < 0; }
 		public static bool operator >  (StonVariant x, ulong y) { return x.CompareTo(y) > 0; }
 		public static bool operator <= (StonVariant x, ulong y) { return x.CompareTo(y) <= 0; }
 		public static bool operator >= (StonVariant x, ulong y) { return x.CompareTo(y) >= 0; }
+		public static bool operator == (StonVariant x, ulong y) { return x.CompareTo(y) == 0; }
 		public static bool operator != (StonVariant x, ulong y) { return x.CompareTo(y) != 0; }
 		#endregion
 
