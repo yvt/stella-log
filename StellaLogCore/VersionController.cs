@@ -4,22 +4,22 @@ namespace Yavit.StellaLog.Core
 {
 	public sealed class VersionController
 	{
-		readonly Repository rep;
+		readonly LogBook book;
 		readonly StellaDB.Database db;
 
-		internal VersionController (Repository rep)
+		internal VersionController (LogBook book)
 		{
-			this.rep = rep;
-			db = rep.Database;
+			this.book = book;
+			db = book.Database;
 		}
 
 		internal byte[] CurrentRevisionRaw
 		{
 			get {
-				return (byte[])rep.LocalConfig ["StellaVCS.Revision"];
+				return (byte[])book.LocalConfig ["StellaVCS.Revision"];
 			}
 			set {
-				rep.LocalConfig ["StellaVCS.Revision"] = value;
+				book.LocalConfig ["StellaVCS.Revision"] = value;
 			}
 		}
 

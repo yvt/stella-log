@@ -2,12 +2,12 @@
 
 namespace Yavit.StellaLog.Core
 {
-	public class Repository
+	public class LogBook
 	{
 		internal readonly StellaDB.Database Database;
 		public readonly LocalConfigManager LocalConfig;
 
-		public Repository (string path)
+		public LogBook (string path)
 		{
 			Database = StellaDB.Database.OpenFile (path);
 			LocalConfig = new LocalConfigManager (this);

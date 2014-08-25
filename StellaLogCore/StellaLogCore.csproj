@@ -34,9 +34,9 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Record.cs" />
-    <Compile Include="Repository.cs" />
     <Compile Include="VersionController.cs" />
     <Compile Include="LocalConfigManager.cs" />
+    <Compile Include="LogBook.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

@@ -6,7 +6,7 @@ namespace Yavit.StellaLog.Core
 {
 	public sealed class LocalConfigManager
 	{
-		readonly Repository rep;
+		readonly LogBook book;
 
 		readonly StellaDB.Table table;
 		readonly Dictionary<string, Entry> entries =
@@ -28,11 +28,11 @@ namespace Yavit.StellaLog.Core
 			public object Value;
 		}
 
-		internal LocalConfigManager (Repository rep)
+		internal LocalConfigManager (LogBook book)
 		{
-			this.rep = rep;
+			this.book = book;
 
-			table = rep.Database ["LocalConfig"];
+			table = book.Database ["LocalConfig"];
 			table.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Key", 32)
 			});
