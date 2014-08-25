@@ -249,6 +249,12 @@ namespace Yavit.StellaDB.Ston
 		public static bool operator != (StonVariant x, ulong y) { return x.CompareTo(y) != 0; }
 		#endregion
 
+		#region Binary Comparsions
+
+		public static bool operator == (StonVariant x, byte[] y) { throw new NotImplementedException (); }
+		public static bool operator != (StonVariant x, byte[] y) { throw new NotImplementedException (); }
+
+		#endregion
 		// TODO: binary comparsion
 	}
 

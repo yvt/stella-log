@@ -35,6 +35,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Record.cs" />
     <Compile Include="Repository.cs" />
+    <Compile Include="VersionController.cs" />
+    <Compile Include="LocalConfigManager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <ProjectReference Include="..\StellaDB\StellaDB.csproj">
+      <Project>{201F7E7E-51A8-4EF7-A6F1-438661447567}</Project>
+      <Name>StellaDB</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>
