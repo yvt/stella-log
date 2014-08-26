@@ -117,6 +117,7 @@ namespace Yavit.StellaDB
 			}
 
 			RemoveAllIndices ();
+			database.MasterTable.RemoveTable (tableNameBytes, TableId);
 			store.Drop ();
 			store = null;
 
