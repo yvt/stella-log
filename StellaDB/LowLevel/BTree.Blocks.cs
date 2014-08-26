@@ -557,7 +557,7 @@ namespace Yavit.StellaDB.LowLevel
 
 			public FindResult FindKey(byte[] key, int offset, int len)
 			{
-				// TODO: use binary search
+				// Binary search (O(n + K log n))
 
 				if (FirstItemIndex == InvalidIndex) {
 					return new FindResult () {
