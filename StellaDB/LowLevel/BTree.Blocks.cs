@@ -177,6 +177,7 @@ namespace Yavit.StellaDB.LowLevel
             readonly int itemSize;
             readonly int maximumIndex;
 
+            [MethodImpl(InternalUtils.MethodImplAggresiveInlining)]
             int ComputeOffsetToItem(int index)
             {
                 if ((uint)index > (uint)maximumIndex)
