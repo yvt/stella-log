@@ -9,6 +9,12 @@ namespace Yavit.StellaDB.Test
 	public class TableTest
 	{
 
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void NullTableName()
+		{
+			var db = Database.CreateMemoryDatabase ();
+			db.GetTable (null);
+		}
 		[Test]
 		public void CreateTable1()
 		{
@@ -30,6 +36,16 @@ namespace Yavit.StellaDB.Test
 			var db = Database.CreateMemoryDatabase ();
 			var table = db ["testtable"];
 			table.AutoIncrementRowIdValue = 1; // ensure table is created
+			table.Drop ();
+		}
+
+		[Test]
+		public void DoubleDrop()
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["testtable"];
+			table.AutoIncrementRowIdValue = 1; // ensure table is created
+			table.Drop ();
 			table.Drop ();
 		}
 

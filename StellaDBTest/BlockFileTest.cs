@@ -6,6 +6,21 @@ namespace Yavit.StellaDB.Test
 	[TestFixture]
 	public class BlockFileTest
 	{
+		[Test, ExpectedException(typeof(ArgumentOutOfRangeException))]
+		public void CreateInstanceInvalidBlockSize ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				new IO.BlockFile (stream, 0);
+			}
+		}
+
+		[Test, ExpectedException(typeof(ArgumentNullException))]
+		public void CreateInstanceNull ()
+		{
+			new IO.BlockFile (null);
+		}
+
 		[Test]
 		public void CreateInstance ()
 		{

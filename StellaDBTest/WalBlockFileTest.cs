@@ -6,6 +6,26 @@ namespace Yavit.StellaDB.Test
 	[TestFixture]
 	public class WalBlockFileTest
 	{
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void CreateInstanceNull1()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var wal = new TemporaryFile())
+			using (var stream = tmp.Open())
+			using (var walStream = wal.Open()) {
+				new IO.WalBlockFile (new IO.BlockFile(stream), null);
+			}
+		}
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void CreateInstanceNull2()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var wal = new TemporaryFile())
+			using (var stream = tmp.Open())
+			using (var walStream = wal.Open()) {
+				new IO.WalBlockFile (null, walStream);
+			}
+		}
 		[Test]
 		public void CreateInstance ()
 		{

@@ -14,6 +14,11 @@ namespace Yavit.StellaDB.Test
 				new IO.BufferedBlockFile(new IO.BlockFile (stream));
 			}
 		}
+		[Test, ExpectedException(typeof(ArgumentNullException))]
+		public void CreateInstanceNull ()
+		{
+			new IO.BufferedBlockFile(null);
+		}
 
 		[Test]
 		public void ReadAndWriteBlock1()

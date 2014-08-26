@@ -11,6 +11,11 @@ namespace Yavit.StellaDB.Test
 		{
 			Database.CreateMemoryDatabase ();
 		}
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void CreateNull ()
+		{
+			Database.OpenFile (null);
+		}
 		[Test]
 		public void CreateFileNoJournal ()
 		{
@@ -33,6 +38,32 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
+		[Test]
+		public void TransactionCommit ()
+		{
+			using (var db = Database.CreateMemoryDatabase ()) {
+				using (var t = db.BeginTransaction()) {
+					t.Commit ();
+				}
+			}
+		}
+		[Test]
+		public void TransactionRollback ()
+		{
+			using (var db = Database.CreateMemoryDatabase ()) {
+				using (var t = db.BeginTransaction()) {
+					t.Rollback ();
+				}
+			}
+		}
+		[Test]
+		public void TransactionAutoRollback ()
+		{
+			using (var db = Database.CreateMemoryDatabase ()) {
+				using (var t = db.BeginTransaction()) {
+				}
+			}
+		}
 	}
 }
 
