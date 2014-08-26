@@ -11,8 +11,7 @@ namespace Yavit.StellaDB.Test
 		[Test ()]
 		public void Create ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				db.CreateBTree ();
@@ -41,8 +40,7 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException(typeof(ArgumentOutOfRangeException))]
 		public void CreateBadKeyLen ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var param = new StellaDB.LowLevel.BTreeParameters ();
@@ -53,8 +51,7 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException()]
 		public void CreateTooLongKeyLen ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var param = new StellaDB.LowLevel.BTreeParameters ();
@@ -65,8 +62,7 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateBadParam ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				db.CreateBTree (null);
@@ -75,8 +71,7 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException]
 		public void DoubleDrop ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -87,8 +82,7 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException]
 		public void AddOnDroppedTree ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -100,8 +94,7 @@ namespace Yavit.StellaDB.Test
 		[Test ()]
 		public void AddKeyOnly1 ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -112,8 +105,7 @@ namespace Yavit.StellaDB.Test
 		[Test ()]
 		public void AddKeyOnly2 ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -127,8 +119,7 @@ namespace Yavit.StellaDB.Test
 
 		public void AddKeyOnly3 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
-			using (var tmp = new TemporaryFile ())
-			using (var stream = tmp.Open ()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -161,8 +152,7 @@ namespace Yavit.StellaDB.Test
 
 		private void AddKeyOnly4 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -187,8 +177,7 @@ namespace Yavit.StellaDB.Test
 		[Test ()]
 		public void AddAndRemove1 ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -254,8 +243,7 @@ namespace Yavit.StellaDB.Test
 		}
 		private void AddAndRemove (IEnumerable<byte[]> keys, int blockSize = 2048)
 		{
-			using (var tmp = new TemporaryFile ())
-			using (var stream = tmp.Open ()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream, blockSize);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -300,8 +288,7 @@ namespace Yavit.StellaDB.Test
 		[Test ()]
 		public void AddAndRemoveAndAdd ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -397,8 +384,7 @@ namespace Yavit.StellaDB.Test
 
 		private void AddAndRemoveQueued (IEnumerable<byte[]> keys)
 		{
-			using (var tmp = new TemporaryFile ())
-			using (var stream = tmp.Open ()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var tree = db.CreateBTree ();
@@ -442,8 +428,7 @@ namespace Yavit.StellaDB.Test
 
 		private void AddAndDrop (IEnumerable<byte[]> keys)
 		{
-			using (var tmp = new TemporaryFile ())
-			using (var stream = tmp.Open ()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var prevAllocs = db.NumAllocatedBlocks;

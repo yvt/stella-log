@@ -8,8 +8,7 @@ namespace Yavit.StellaDB.Test
 	{
 		void CreateBlob(Action<LowLevel.Blob> callback)
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blocks = new StellaDB.IO.BlockFile (stream);
 				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
 				var blob = db.CreateBlob();

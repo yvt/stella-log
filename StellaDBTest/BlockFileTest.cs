@@ -24,8 +24,7 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void CreateInstance ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				new IO.BlockFile (stream);
 			}
 		}
@@ -33,8 +32,7 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteBlock1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.BlockFile (stream);
 
 				var r = new Random ();
@@ -65,8 +63,7 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteBlock2()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.BlockFile (stream);
 
 				var r = new Random ();
@@ -99,8 +96,7 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void Resize1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.BlockFile (stream);
 
 				blockFile.NumBlocks = 810;
@@ -129,8 +125,7 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void AutoResize1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var stream = tmp.Open()) {
+			using (var stream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.BlockFile (stream);
 
 				var bytes = new byte[blockFile.BlockSize];

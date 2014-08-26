@@ -9,30 +9,24 @@ namespace Yavit.StellaDB.Test
 		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateInstanceNull1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				new IO.WalBlockFile (new IO.BlockFile(stream), null);
 			}
 		}
 		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateInstanceNull2()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				new IO.WalBlockFile (null, walStream);
 			}
 		}
 		[Test]
 		public void CreateInstance ()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 			}
 		}
@@ -40,10 +34,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteBlock1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				var r = new Random ();
@@ -74,10 +66,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteBlock2()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				var r = new Random ();
@@ -110,10 +100,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteWithFlushBlock1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				var r = new Random ();
@@ -146,10 +134,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void ReadAndWriteWithFlushBlock2()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				var r = new Random ();
@@ -283,10 +269,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void Resize1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				blockFile.NumBlocks = 810;
@@ -319,10 +303,8 @@ namespace Yavit.StellaDB.Test
 		[Test]
 		public void AutoResize1()
 		{
-			using (var tmp = new TemporaryFile())
-			using (var wal = new TemporaryFile())
-			using (var stream = tmp.Open())
-			using (var walStream = wal.Open()) {
+			using (var stream = new System.IO.MemoryStream())
+			using (var walStream = new System.IO.MemoryStream()) {
 				var blockFile = new IO.WalBlockFile (new IO.BlockFile(stream), walStream);
 
 				var bytes = new byte[blockFile.BlockSize];
