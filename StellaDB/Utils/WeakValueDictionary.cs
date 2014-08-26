@@ -23,7 +23,11 @@ namespace Yavit.StellaDB.Utils
 			WeakReference r;
 			if (dic.TryGetValue(key, out r)) {
 				value = (TValue) r.Target;
-				return r.IsAlive;
+				var isAlive = r.IsAlive;
+                if (!isAlive) {
+                    dic.Remove(key);
+                }
+                return isAlive;
 			} else {
 				value = default(TValue);
 			}
