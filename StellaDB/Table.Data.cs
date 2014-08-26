@@ -147,7 +147,7 @@ namespace Yavit.StellaDB
 
 			public Ston.StonVariant ToVariant()
 			{
-				if (variant == null) {
+				if (object.ReferenceEquals(variant, null)) {
 					variant = new Ston.SerializedStonVariant (CreateReader ());
 				}
 				return variant;
