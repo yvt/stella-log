@@ -33,6 +33,46 @@ namespace Yavit.StellaDB.Test
 				}
 			});
 		}
+
+		[Test]
+		public void CreateAndDeleteEntry()
+		{
+			GetTree (tree => {
+				var data = Utils.GenerateRandomBytes(1024 * 64);
+				var e = tree.InsertEntry(new byte[] {1, 2, 3});
+				e.WriteValue(data);
+
+				var data2 = e.ReadValue();
+				Assert.That(data2, Is.EqualTo(data));
+
+				tree.DeleteEntry(new byte[] {1, 2, 3});
+
+				Assert.That(tree.FindEntry(new byte[] {1, 2, 3}), Is.Null);
+			});
+		}
+		[Test]
+		public void CreateAndDeleteEntryDisactivated()
+		{
+			GetTree (tree => {
+				var data = Utils.GenerateRandomBytes(1024 * 64);
+				var e = tree.InsertEntry(new byte[] {1, 2, 3});
+
+				// Make e inactive
+				tree.InsertEntry(new byte[] {4, 5, 6});
+
+				e.WriteValue(data);
+
+				// Make e inactive
+				tree.InsertEntry(new byte[] {7, 8, 9});
+
+				var data2 = e.ReadValue();
+				Assert.That(data2, Is.EqualTo(data));
+
+				tree.DeleteEntry(new byte[] {1, 2, 3});
+
+				Assert.That(tree.FindEntry(new byte[] {1, 2, 3}), Is.Null);
+			});
+		}
 	}
 }
 

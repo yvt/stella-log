@@ -20,6 +20,84 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 		[Test ()]
+		public void CreateAndOpen ()
+		{
+			using (var tmp = new TemporaryFile()) {
+				long bId;
+				using (var stream = tmp.Open()) {
+					var blocks = new StellaDB.IO.BlockFile (stream);
+					var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+					bId = db.CreateBTree ().BlockId;
+					db.Flush ();
+				}
+				using (var stream = tmp.Open()) {
+					var blocks = new StellaDB.IO.BlockFile (stream);
+					var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+					db.OpenBTree (bId);
+				}
+
+			}
+		}
+		[Test, ExpectedException(typeof(ArgumentOutOfRangeException))]
+		public void CreateBadKeyLen ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				var blocks = new StellaDB.IO.BlockFile (stream);
+				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+				var param = new StellaDB.LowLevel.BTreeParameters ();
+				param.MaximumKeyLength = -1;
+				db.CreateBTree (param);
+			}
+		}
+		[Test, ExpectedException()]
+		public void CreateTooLongKeyLen ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				var blocks = new StellaDB.IO.BlockFile (stream);
+				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+				var param = new StellaDB.LowLevel.BTreeParameters ();
+				param.MaximumKeyLength = 1024 * 114514;
+				db.CreateBTree (param);
+			}
+		}
+		[Test, ExpectedException(typeof(ArgumentNullException))]
+		public void CreateBadParam ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				var blocks = new StellaDB.IO.BlockFile (stream);
+				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+				db.CreateBTree (null);
+			}
+		}
+		[Test, ExpectedException]
+		public void DoubleDrop ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				var blocks = new StellaDB.IO.BlockFile (stream);
+				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+				var tree = db.CreateBTree ();
+				tree.Drop ();
+				tree.Drop ();
+			}
+		}
+		[Test, ExpectedException]
+		public void AddOnDroppedTree ()
+		{
+			using (var tmp = new TemporaryFile())
+			using (var stream = tmp.Open()) {
+				var blocks = new StellaDB.IO.BlockFile (stream);
+				var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+				var tree = db.CreateBTree ();
+				tree.Drop ();
+				tree.InsertEntry (new byte[] { 114, 51, 4 });
+				db.Flush ();
+			}
+		}
+		[Test ()]
 		public void AddKeyOnly1 ()
 		{
 			using (var tmp = new TemporaryFile())
@@ -47,32 +125,7 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
-		[Test ()]
-		public void AddKeyOnly3_1 ()
-		{
-			AddKeyOnly3 (1);
-		}
-		[Test ()]
-		public void AddKeyOnly3_10 ()
-		{
-			AddKeyOnly3 (10);
-		}
-		[Test ()]
-		public void AddKeyOnly3_100 ()
-		{
-			AddKeyOnly3 (100);
-		}
-		[Test ()]
-		public void AddKeyOnly3_1000 ()
-		{
-			AddKeyOnly3 (1000);
-		}
-		[Test ()]
-		public void AddKeyOnly3_10000 ()
-		{
-			AddKeyOnly3 (10000);
-		}
-		public void AddKeyOnly3 (int count)
+		public void AddKeyOnly3 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
 			using (var tmp = new TemporaryFile ())
 			using (var stream = tmp.Open ()) {
@@ -106,32 +159,7 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
-		[Test ()]
-		public void AddKeyOnly4_1 ()
-		{
-			AddKeyOnly4 (1);
-		}
-		[Test ()]
-		public void AddKeyOnly4_10 ()
-		{
-			AddKeyOnly4 (10);
-		}
-		[Test ()]
-		public void AddKeyOnly4_100 ()
-		{
-			AddKeyOnly4 (100);
-		}
-		[Test ()]
-		public void AddKeyOnly4_1000 ()
-		{
-			AddKeyOnly4 (1000);
-		}
-		[Test ()]
-		public void AddKeyOnly4_10000 ()
-		{
-			AddKeyOnly4 (10000);
-		}
-		private void AddKeyOnly4 (int count)
+		private void AddKeyOnly4 ([Values(1, 10, 100, 1000, 10000)] int count)
 		{
 			using (var tmp = new TemporaryFile())
 			using (var stream = tmp.Open()) {
@@ -251,18 +279,7 @@ namespace Yavit.StellaDB.Test
 				try {
 					Assert.That(!tree.DeleteEntry (new byte[]{10})); // non-existent
 					for(int i = 0; i < keyList.Length; ++i) {
-						/*if (i == 957) {
-							Console.Error.WriteLine(" ------- 957 BEFORE -------");
-							tree.Dump (Console.Error);
-						}
-						for (int j = i; j < keyList.Length; ++j) {
-							Assert.IsNotNull(tree.FindEntry(keyList[j]));
-						}*/
 						Assert.That(tree.DeleteEntry (keyList[i]));
-						/*if (i == 957) {
-							Console.Error.WriteLine(" ------- 957 AFTER -------");
-							tree.Dump (Console.Error);
-						}*/
 					}
 					foreach (var key in keys) {
 						Assert.That(!tree.DeleteEntry (key));
@@ -296,6 +313,34 @@ namespace Yavit.StellaDB.Test
 				Assert.That (tree.DeleteEntry(key));
 				Assert.That (!tree.DeleteEntry(key));
 				db.Flush ();
+			}
+		}
+		[Test ()]
+		public void AddAndReloadAndRemoveAndAdd ()
+		{
+			long bId;
+			using (var tmp = new TemporaryFile()) {
+				var key = new byte[] { 114, 51, 4 };
+				using (var stream = tmp.Open()) {
+					var blocks = new StellaDB.IO.BlockFile (stream);
+					var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+					var tree = db.CreateBTree ();
+					tree.InsertEntry (key);
+					bId = tree.BlockId;
+					db.Flush ();
+
+				}
+				using (var stream = tmp.Open ()) {
+					var blocks = new StellaDB.IO.BlockFile (stream);
+					var db = new StellaDB.LowLevel.LowLevelDatabase (blocks);
+					var tree = db.OpenBTree (bId);
+					Assert.That (tree.DeleteEntry(key));
+					Assert.That (!tree.DeleteEntry(key));
+					tree.InsertEntry (key);
+					Assert.That (tree.DeleteEntry(key));
+					Assert.That (!tree.DeleteEntry(key));
+					db.Flush ();
+				}
 			}
 		}
 
