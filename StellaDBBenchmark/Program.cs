@@ -48,8 +48,11 @@ namespace Yavit.StellaDB.Benchmark
 
 		public static void TestLowLevel()
 		{
-			try { System.IO.File.Delete("/tmp/test.stelladb"); } catch {}
-			using (var tmp = new TemporaryFile("/tmp/test.stelladb"))
+            var path = Path.Combine(Path.GetTempPath(), "test.stelladb");
+            Console.WriteLine("Writing to {0}", path);
+            try { System.IO.File.Delete(path); }
+            catch { }
+            using (var tmp = new TemporaryFile(path))
 			using (var stream = tmp.Open()) {
 				var blocks = new StellaDB.IO.BlockFile (stream, 512);
 				var dbparam = new StellaDB.LowLevel.LowLevelDatabaseParameters ();
