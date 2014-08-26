@@ -33,7 +33,11 @@ namespace Yavit.StellaDB.Test
 		public void Dispose ()
 		{
 			if (fileName != null) {
-				File.Delete (fileName);
+                try
+                {
+                    File.Delete(fileName);
+                }
+                catch { }
 				fileName = null;
 			}
 		}

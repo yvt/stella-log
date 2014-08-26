@@ -890,7 +890,8 @@ namespace Yavit.StellaDB.LowLevel
 							lowerNode.IndexInParent = item.Index;
 						}
 						if (nextIndex != null) {
-							new Item(newNode, (int)nextIndex).NextIndex = (int)idx;
+                            var nextItem = new Item(newNode, (int)nextIndex); 
+							nextItem.NextIndex = (int)idx;
 						} else {
 							newNode.FirstItemIndex = (int)idx;
 						}
@@ -910,7 +911,8 @@ namespace Yavit.StellaDB.LowLevel
 								lowerNode.IndexInParent = item.Index;
 							}
 
-							new Item(newNode, (int)nextIndex).NextIndex = (int)idx;
+                            var nextItem = new Item(newNode, (int)nextIndex);
+							nextItem.NextIndex = (int)idx;
 							nextIndex = idx;
 							haveInsertedNewItem = true;
 							--movedCount;
@@ -943,7 +945,8 @@ namespace Yavit.StellaDB.LowLevel
 						if (pos.PrevIndex == InvalidIndex) {
 							node.FirstItemIndex = (int)freeIndex;
 						} else {
-							new Item (node, pos.PrevIndex).NextIndex = (int)freeIndex;
+                            var prevItem = new Item(node, pos.PrevIndex);
+							prevItem.NextIndex = (int)freeIndex;
 						}
 						if (lowerNode != null &&
 							(long)lowerNode.BlockId == item.LinkedBlockId) {
@@ -963,7 +966,8 @@ namespace Yavit.StellaDB.LowLevel
 					// now half of the items are moved to the new node, but
 					// it is not connected to any nodes yet.
 					// take the last moved element (median).
-					new Item(newNode, newNode.GetPreviousIndex((int)nextIndex)).NextIndex = InvalidIndex;
+                    var realLastItem = new Item(newNode, newNode.GetPreviousIndex((int)nextIndex));
+					realLastItem.NextIndex = InvalidIndex;
 					newNode.Validate ();
 
 					insertedItem.CopyFrom (new Item (newNode, (int)nextIndex));
@@ -1043,7 +1047,8 @@ namespace Yavit.StellaDB.LowLevel
 						if (prev == InvalidIndex) {
 							node.FirstItemIndex = item.NextIndex;
 						} else {
-							new Item (node, prev).NextIndex = item.NextIndex;
+                            var prevItem = new Item(node, prev);
+							prevItem.NextIndex = item.NextIndex;
 						}
 						node.FreeIndexMap [item.Index] = true;
 						item.Node.Validate ();
@@ -1089,7 +1094,8 @@ namespace Yavit.StellaDB.LowLevel
 
 								// Add a new item to the left
 								newItem.CopyFrom (sepItem);
-								new Item (node, node.LastItemIndex).NextIndex = newItem.Index;
+                                var lastItem = new Item(node, node.LastItemIndex);
+								lastItem.NextIndex = newItem.Index;
 								newItem.NextIndex = InvalidIndex;
 								newItem.LinkedBlockId = nextSib.FirstChildNodeBlockId;
 
@@ -1138,7 +1144,8 @@ namespace Yavit.StellaDB.LowLevel
 								sepItem.NextIndex = oldNext;
 
 								// Remove the old item
-								new Item (prevSib, prevSib.GetPreviousIndex (oldItem.Index)).NextIndex = InvalidIndex;
+                                var prevItem = new Item (prevSib, prevSib.GetPreviousIndex (oldItem.Index));
+								prevItem.NextIndex = InvalidIndex;
 								prevSib.FreeIndexMap [oldItem.Index] = true;
 
 								prevSib.Validate ();
@@ -1169,7 +1176,8 @@ namespace Yavit.StellaDB.LowLevel
 							if (lastIndex == InvalidIndex) {
 								node.FirstItemIndex = newItem.Index;
 							} else {
-								new Item(node, lastIndex).NextIndex = newItem.Index;
+								var lastItem = new Item(node, lastIndex);
+                                lastItem.NextIndex = newItem.Index;
 							}
 							lastIndex = newItem.Index;
 						}
@@ -1182,21 +1190,24 @@ namespace Yavit.StellaDB.LowLevel
 							var newIndex = node.AllocateIndexNeverFail(false);
 							var newItem = node.GetItem(newIndex);
 							newItem.CopyFrom(item);
-							new Item(node, lastIndex).NextIndex = newItem.Index;
+                            var lastItem = new Item(node, lastIndex);
+                            lastItem.NextIndex = newItem.Index;
 							lastIndex = newItem.Index;
 
 							curIndex = item.NextIndex;
 						}
 
-						new Item (node, lastIndex).NextIndex = InvalidIndex;
+                        var lastItem2 = new Item(node, lastIndex);
+                        lastItem2.NextIndex = InvalidIndex;
 
 						// Remove the separator and the right node.
 						if (parentIndex == InvalidIndex) {
 							node.Parent.FirstItemIndex = 
 								new Item (node.Parent, nextIndex).NextIndex;
 						} else {
-							new Item (node.Parent, parentIndex).NextIndex =
-								new Item (node.Parent, nextIndex).NextIndex;
+                            var parNextItem = new Item(node.Parent, parentIndex);
+                            parNextItem.NextIndex =
+                                new Item(node.Parent, nextIndex).NextIndex;
 						}
 						node.Parent.FreeIndexMap [nextIndex] = true;
 						nextSib.Deallocate ();
@@ -1227,14 +1238,16 @@ namespace Yavit.StellaDB.LowLevel
 							if (lastIndex == InvalidIndex) {
 								node.FirstItemIndex = newItem.Index;
 							} else {
-								new Item(node, lastIndex).NextIndex = newItem.Index;
+                                var prevItem = new Item(node, lastIndex);
+                                prevItem.NextIndex = newItem.Index;
 							}
 							lastIndex = newItem.Index;
 
 							curIndex = item.NextIndex;
 						}
 
-						new Item (node, lastIndex).NextIndex = originalItemsFirstIndex;
+                        var prevItem2 = new Item(node, lastIndex);
+                        prevItem2.NextIndex = originalItemsFirstIndex;
 						node.FirstChildNodeBlockId = prevSib.FirstChildNodeBlockId;
 
 						// Remove the separator and the left node.
@@ -1243,8 +1256,9 @@ namespace Yavit.StellaDB.LowLevel
 							node.Parent.FirstChildNodeBlockId = (long)node.BlockId;
 							node.Parent.FreeIndexMap [parentIndex] = true;
 						} else {
-							new Item (node.Parent, prevIndex).LinkedBlockId = (long)node.BlockId;
-							new Item (node.Parent, prevIndex).NextIndex =
+                            var prevItem = new Item(node.Parent, prevIndex);
+                            prevItem.LinkedBlockId = (long)node.BlockId;
+                            prevItem.NextIndex =
 								new Item (node.Parent, parentIndex).NextIndex;
 							node.Parent.FreeIndexMap [parentIndex] = true;
 						}
@@ -1472,7 +1486,8 @@ namespace Yavit.StellaDB.LowLevel
 				if (index == InvalidIndex) {
 					FirstChildNodeBlockId = blockId;
 				} else {
-					new Item (this, index).LinkedBlockId = blockId;
+                    var item = new Item(this, index);
+                    item.LinkedBlockId = blockId;
 				}
 			}
 
