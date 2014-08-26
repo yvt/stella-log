@@ -174,6 +174,18 @@ namespace Yavit.StellaDB.LowLevel
 
 			BufferPool.BufferHandle temporalBufferHandle;
 
+            readonly int itemSize;
+            readonly int maximumIndex;
+
+            int ComputeOffsetToItem(int index)
+            {
+                if ((uint)index > (uint)maximumIndex)
+                {
+                    throw new ArgumentOutOfRangeException("index");
+                }
+                return NodeHeaderSize + ItemSize * index;
+            }
+
 			public struct Item
 			{
 				readonly public NodeBlock Node;
@@ -184,13 +196,9 @@ namespace Yavit.StellaDB.LowLevel
 				[MethodImpl(InternalUtils.MethodImplAggresiveInlining)]
 				public Item(NodeBlock node, int index)
 				{
-					if (index < 0 || index >= node.Tree.order - 1) {
-						throw new ArgumentOutOfRangeException("index");
-					}
-
 					Node = node;
 					Index = index;
-					Offset = NodeHeaderSize + Node.ItemSize * Index;
+                    Offset = node.ComputeOffsetToItem(index);
 				}
 
 				public int NextIndex
@@ -309,6 +317,8 @@ namespace Yavit.StellaDB.LowLevel
 				this.Tree = tree;
 
 				FreeIndexMap = new Bitmap(tree.order - 1);
+                itemSize = Tree.itemSize;
+                maximumIndex = tree.order - 2;
 			}
 
 			public void SetupForTemporaryNode()
@@ -335,7 +345,7 @@ namespace Yavit.StellaDB.LowLevel
 			int ItemSize
 			{
 				get { 
-					return Tree.itemSize;
+					return itemSize;
 				}
 			}
 
@@ -555,6 +565,22 @@ namespace Yavit.StellaDB.LowLevel
 				public bool ExactMatch;
 			}
 
+            int[] GetItemIndices(out int numItems)
+            {
+                int[] indices = Tree.indices;
+                int count = 0;
+                var bitcvt = BitCvt;
+                int index = FirstItemIndex;
+                while (index != InvalidIndex)
+                {
+                    indices[count++] = index;
+                    index = bitcvt.GetUInt16(ComputeOffsetToItem(index)); // = new Item(this, index).NextIndex;
+                }
+
+                numItems = count;
+                return indices;
+            }
+
 			public FindResult FindKey(byte[] key, int offset, int len)
 			{
 				// Binary search (O(n + K log n))
@@ -568,13 +594,8 @@ namespace Yavit.StellaDB.LowLevel
 				}
 
 				// Build index map for binary search
-				int[] indices = Tree.indices;
-				int numItems = 0;
-				int index = FirstItemIndex;
-				while (index != InvalidIndex) {
-					indices [numItems++] = index;
-					index = new Item (this, index).NextIndex;
-				}
+                int numItems;
+                int[] indices = GetItemIndices(out numItems);
 
 				int start = 0, end = numItems;
 				var comparer = Tree.comparer;
