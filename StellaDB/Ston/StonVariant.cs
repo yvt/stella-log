@@ -350,7 +350,7 @@ namespace Yavit.StellaDB.Ston
 
 		public void LocateSelf()
 		{
-			if (parent == null) {
+			if (object.ReferenceEquals(parent, null)) {
 				reader.Reset ();
 			} else if (keyInParent != null) {
 				parent.Locate (indexInParent);

@@ -23,6 +23,13 @@ namespace Yavit.StellaLog.Core
 			}
 		}
 
+		public byte[] GetCurrentRevision()
+		{
+			return (byte[])CurrentRevisionRaw.Clone();
+		}
+
+
+
 	}
 }
 
