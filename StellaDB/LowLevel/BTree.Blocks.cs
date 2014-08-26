@@ -126,8 +126,8 @@ namespace Yavit.StellaDB.LowLevel
 					throw new DataInconsistencyException (ex);
 				}
 
-				if (RootNodeBlockId <= 0) {
-					throw new DataInconsistencyException ("Root Block ID is not positive.");
+				if (RootNodeBlockId < 0) {
+					throw new DataInconsistencyException ("Root Block ID is negative.");
 				}
 			}
 
