@@ -258,6 +258,7 @@ namespace Yavit.StellaDB.Ston
 		// TODO: binary comparsion
 	}
 
+    [Serializable]
 	public class StonVariantException: Exception
 	{
 		public override string Message {

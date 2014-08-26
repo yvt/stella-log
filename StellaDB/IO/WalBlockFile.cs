@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Yavit.StellaDB.IO
 {
-	public class WalBlockFile: IBlockStorage
+	public sealed class WalBlockFile: IBlockStorage
 	{
 		private readonly BlockFile baseBlockFile;
 		private readonly Stream stream;

@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Yavit.StellaDB.LowLevel
 {
-	class BufferPool
+	sealed class BufferPool
 	{
 		readonly int blockSize;
 		readonly LinkedList<Item> buffers = new LinkedList<Item>();
@@ -22,7 +22,7 @@ namespace Yavit.StellaDB.LowLevel
 			return new BufferHandle (this);
 		}
 
-		class Item
+		sealed class Item
 		{
 			public readonly MemoryStream Stream;
 			public readonly BinaryWriter Writer;

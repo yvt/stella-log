@@ -2,6 +2,7 @@
 
 namespace Yavit.StellaDB
 {
+    [Serializable]
 	public class DataInconsistencyException: InvalidOperationException
 	{
 		public DataInconsistencyException ():

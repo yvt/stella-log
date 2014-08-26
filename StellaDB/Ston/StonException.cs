@@ -2,6 +2,7 @@
 
 namespace Yavit.StellaDB.Ston
 {
+    [Serializable]
 	public class StonException: Exception
 	{
 		public StonException (): 
