@@ -9,7 +9,7 @@ namespace Yavit.StellaDB.Test
 	public class TableTest
 	{
 
-		[Test, ExpectedException(typeof(ArgumentException))]
+		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void NullTableName()
 		{
 			var db = Database.CreateMemoryDatabase ();

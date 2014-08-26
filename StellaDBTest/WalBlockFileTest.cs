@@ -6,7 +6,7 @@ namespace Yavit.StellaDB.Test
 	[TestFixture]
 	public class WalBlockFileTest
 	{
-		[Test, ExpectedException(typeof(ArgumentException))]
+		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateInstanceNull1()
 		{
 			using (var tmp = new TemporaryFile())
@@ -16,7 +16,7 @@ namespace Yavit.StellaDB.Test
 				new IO.WalBlockFile (new IO.BlockFile(stream), null);
 			}
 		}
-		[Test, ExpectedException(typeof(ArgumentException))]
+		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateInstanceNull2()
 		{
 			using (var tmp = new TemporaryFile())

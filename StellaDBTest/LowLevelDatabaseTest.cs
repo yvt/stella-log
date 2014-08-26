@@ -15,7 +15,7 @@ namespace Yavit.StellaDB.Test
 				new StellaDB.LowLevel.LowLevelDatabase (blocks);
 			}
 		}
-		[Test, ExpectedException(typeof(ArgumentException))]
+		[Test, ExpectedException(typeof(ArgumentNullException))]
 		public void CreateInstanceNull ()
 		{
 			new StellaDB.LowLevel.LowLevelDatabase (null);

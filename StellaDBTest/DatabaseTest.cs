@@ -11,10 +11,15 @@ namespace Yavit.StellaDB.Test
 		{
 			Database.CreateMemoryDatabase ();
 		}
-		[Test, ExpectedException(typeof(ArgumentException))]
-		public void CreateNull ()
+		[Test, ExpectedException(typeof(ArgumentNullException))]
+		public void CreateNullPath ()
 		{
 			Database.OpenFile (null);
+		}
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void CreateEmptyPath ()
+		{
+			Database.OpenFile ("");
 		}
 		[Test]
 		public void CreateFileNoJournal ()

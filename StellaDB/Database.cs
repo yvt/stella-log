@@ -63,6 +63,8 @@ namespace Yavit.StellaDB
 		{
 			if (path == null)
 				throw new ArgumentNullException ("path");
+			if (path.Length == 0)
+				throw new ArgumentException ("Path cannot be empty.", "path");
 
 			System.IO.Stream dbStream = null, jStream = null;
 			try {

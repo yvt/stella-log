@@ -33,6 +33,8 @@ namespace Yavit.StellaDB.IO
 
 		public WalBlockFile (BlockFile blockFile, Stream walStream)
 		{
+			if (blockFile == null)
+				throw new ArgumentNullException ("blockFile");
 			baseBlockFile = blockFile;
 			stream = walStream;
 			blockSize = baseBlockFile.BlockSize;

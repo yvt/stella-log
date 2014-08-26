@@ -14,6 +14,8 @@ namespace Yavit.StellaDB.IO
 		}
 		public BlockFile (System.IO.Stream stream, int blockSize)
 		{
+			if (stream == null)
+				throw new ArgumentNullException ("stream");
 			if (blockSize < 1) {
 				throw new ArgumentOutOfRangeException ("blockSize");
 			}
