@@ -3,7 +3,7 @@
 namespace Yavit.StellaDB.Ston
 {
     [Serializable]
-	public class StonException: Exception
+	public class StonException: System.Runtime.Serialization.SerializationException
 	{
 		public StonException (): 
 		base("Error occured while processing serialized data.")

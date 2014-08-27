@@ -60,6 +60,7 @@
     <Compile Include="StonVariantTest.cs" />
     <Compile Include="TableTest.cs" />
     <Compile Include="Property.cs" />
+    <Compile Include="StonGeneratedConverterTest.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

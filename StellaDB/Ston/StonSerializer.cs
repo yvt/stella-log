@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace Yavit.StellaDB.Ston
 {
@@ -19,7 +20,8 @@ namespace Yavit.StellaDB.Ston
 		{
 			RecursionLimit = 100;
 		}
-
+			
+		#region Type Converter
 		public object ConvertToType(object obj, Type type)
 		{
 			if (obj == null) {
@@ -35,8 +37,8 @@ namespace Yavit.StellaDB.Ston
 				var dic = obj as IDictionary<string, object>;
 				if (dic != null) {
 
-					StonConverter converter;
-					if (converters.TryGetValue (type, out converter)) {
+					StonConverter converter = GetConverter(type);
+					if (converter != null) {
 						return converter.Deserialize (dic, type, this);
 					}
 
@@ -102,7 +104,9 @@ namespace Yavit.StellaDB.Ston
 				}
 			}
 		}
+		#endregion
 
+		#region Deserialization
 		object DeserializeImpl(StonReader reader, int level = 0)
 		{
 			switch (reader.CurrentNodeType) {
@@ -169,7 +173,9 @@ namespace Yavit.StellaDB.Ston
 		{
 			return (T)Deserialize (buffer, typeof(T));
 		}
+		#endregion
 			
+		#region Serialization
 		void SerializeImpl(object obj, StonWriter writer, int level)
 		{
 			if (level > RecursionLimit) {
@@ -229,8 +235,8 @@ namespace Yavit.StellaDB.Ston
 						break;
 					} 
 					if (dic == null) {
-						StonConverter cvt;
-						if (converters.TryGetValue (obj.GetType (), out cvt)) {
+						StonConverter cvt = GetConverter(obj.GetType());
+						if (cvt != null) {
 							dic = cvt.Serialize (obj, this);
 						} else {
 							// might be arbitary IDictionary<string, T> where T != object.
@@ -251,6 +257,7 @@ namespace Yavit.StellaDB.Ston
 												wrapperType.GetConstructor (new Type[]{ }).Invoke (null);
 											covarianceWrapper.Add (obj.GetType (), wrapper);
 											dic = wrapper.Convert (obj);
+											break;
 										}
 									}
 								}
@@ -282,7 +289,26 @@ namespace Yavit.StellaDB.Ston
 			Serialize (obj, sw);
 			return sw.ToArray ();
 		}
+		#endregion
 
+		StonConverter GetConverter(Type type)
+		{
+			StonConverter converter;
+			if (converters.TryGetValue(type, out converter)) {
+				return converter;
+			}
+
+			// Class with SerializableAttribute can be serialized
+			if (type.GetCustomAttributes(typeof(SerializableAttribute), false).Length > 0) {
+				converter = new StonConverterForSerializable (type);
+				return converter;
+			}
+
+			throw new System.Runtime.Serialization.SerializationException 
+			("Failed to find serializer for the type " + type.FullName + ".");
+		}
+
+		#region CovarianceWrapper
 		Dictionary<Type, ICovariantDictionaryWrapper> covarianceWrapper
 			= new Dictionary<Type, ICovariantDictionaryWrapper>();
 
@@ -300,6 +326,7 @@ namespace Yavit.StellaDB.Ston
 						select new KeyValuePair<string, object> (item.Key, item.Value);
 			}
 		}
+		#endregion
 	}
 }
 
