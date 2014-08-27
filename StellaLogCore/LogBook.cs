@@ -6,11 +6,16 @@ namespace Yavit.StellaLog.Core
 	{
 		internal readonly StellaDB.Database Database;
 		public readonly LocalConfigManager LocalConfig;
+		public readonly VersionController VersionController;
 
 		public LogBook (string path)
 		{
 			Database = StellaDB.Database.OpenFile (path);
-			LocalConfig = new LocalConfigManager (this);
+			using (var t = Database.BeginTransaction()) {
+				LocalConfig = new LocalConfigManager (this);
+				VersionController = new VersionController (this);
+				t.Commit ();
+			}
 		}
 
 
