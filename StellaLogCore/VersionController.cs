@@ -283,16 +283,39 @@ namespace Yavit.StellaLog.Core
 			CurrentBranchRaw = goal.DbBranch.Name;
 		}
 
+		sealed class CommitTreePath
+		{
+			public IEnumerable<Revision> CurrentToCommonAncestor;
+			public Revision CommonAncestor;
+			public IEnumerable<Revision> CommonAncestorToGoal;
+		}
+
 		/// <summary>
 		/// Checks out the specified revision by moving the current branch's pointer.
 		/// </summary>
 		/// <param name="revision">Revision.</param>
 		public void SetCurrentRevision(byte[] revision)
 		{
-			ValidateRevisionId (revision);
+			var path = ComputeCommitTreePath (CurrentRevisionRaw, revision);
+			if (path == null) {
+				// No change.
+				return;
+			}
+			foreach (var r in path.CurrentToCommonAncestor) {
+				RevertModificationsOfRevision (r);
+			}
+			foreach (var r in path.CommonAncestorToGoal) {
+				ApplyModificationsOfRevision (r);
+			}
+		}
 
-			var goal = LookupRevision (revision);
-			var current = LookupRevision (CurrentRevisionRaw);
+		CommitTreePath ComputeCommitTreePath(byte[] currentId, byte[] goalId)
+		{
+			ValidateRevisionId (currentId);
+			ValidateRevisionId (goalId);
+
+			var goal = LookupRevision (goalId);
+			var current = LookupRevision (currentId);
 
 			// Find the first common ancestor in commit tree
 			// (where the parent of each revision is its reference revision).
@@ -304,8 +327,8 @@ namespace Yavit.StellaLog.Core
 				var comparator = StellaDB.DefaultKeyComparer.Instance;
 				var ancestors = new Dictionary<byte[], Tuple<int, bool>>(comparator);
 
-				if (comparator.Equals(revision, CurrentRevisionRaw)) {
-					return;
+				if (comparator.Equals(goalId, currentId)) {
+					return null;
 				}
 
 				goalAncestors.Add (goalAncestor);
@@ -320,7 +343,7 @@ namespace Yavit.StellaLog.Core
 						throw new InvalidOperationException (string.Format(
 							"Failed to find the common ancestor revision of {0} and {1}.",
 							RevisionIdToString(current.DbRevision.Id),
-							RevisionIdToString(revision)));
+							RevisionIdToString(goalId)));
 					}
 					if (hasGoalParent && hasCurParent) {
 						// Choose one using heuristics
@@ -341,7 +364,7 @@ namespace Yavit.StellaLog.Core
 								throw new InvalidOperationException (string.Format(
 									"Circular reference was found while finding the common ancestor revision of {0} and {1}.",
 									RevisionIdToString(current.DbRevision.Id),
-									RevisionIdToString(revision)));
+									RevisionIdToString(goalId)));
 							}
 							int index = tuple.Item1;
 							currentAncestors.RemoveRange (index + 1, currentAncestors.Count - index - 1);
@@ -357,7 +380,7 @@ namespace Yavit.StellaLog.Core
 								throw new InvalidOperationException (string.Format(
 									"Circular reference was found while finding the common ancestor revision of {0} and {1}.",
 									RevisionIdToString(current.DbRevision.Id),
-									RevisionIdToString(revision)));
+									RevisionIdToString(goalId)));
 							}
 							int index = tuple.Item1;
 							goalAncestors.RemoveRange (index + 1, goalAncestors.Count - index - 1);
@@ -373,15 +396,17 @@ namespace Yavit.StellaLog.Core
 			// Now the last elements of goalAncestors and currentAncestors are
 			// the common ancestor.
 
+			var ret = new CommitTreePath ();
+
 			// First, move the current revision to the common ancestor.
-			for (int i = 0; i < currentAncestors.Count - 1; ++i) {
-				RevertModificationsOfRevision (currentAncestors [i]);
-			}
+			ret.CommonAncestorToGoal = currentAncestors.Take (currentAncestors.Count - 1);
 
 			// And then move the current revision to the goal revision.
-			for (int i = goalAncestors.Count - 2; i >= 0; --i) {
-				ApplyModificationsOfRevision (goalAncestors [i]);
-			}
+			ret.CommonAncestorToGoal = goalAncestors.Take (goalAncestors.Count - 1).Reverse ();
+
+			ret.CommonAncestor = currentAncestors [currentAncestors.Count - 1];
+
+			return ret;
 		}
 
 		/// <summary>
@@ -402,6 +427,20 @@ namespace Yavit.StellaLog.Core
 			CurrentBranchRaw = DetachedBranchId;
 
 			SetCurrentRevision (revision);
+		}
+
+		#endregion
+
+		#region Merge
+
+		public void MergeRevision(byte[] mergedRevision)
+		{
+			ValidateRevisionId (mergedRevision);
+
+			// 
+			var co = ComputeCommitTreePath (CurrentRevisionRaw, mergedRevision);
+
+			throw new NotImplementedException ();
 		}
 
 		#endregion
