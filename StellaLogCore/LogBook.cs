@@ -16,9 +16,10 @@ namespace Yavit.StellaLog.Core
 			Database = StellaDB.Database.OpenFile (path);
 			transactions = new NestedTransactionManager (Database);
 
-			using (var t = Database.BeginTransaction()) {
+			using (var t = BeginTransaction()) {
 				LocalConfig = new LocalConfigManager (this);
 				VersionController = new VersionController (this);
+
 				t.Commit ();
 			}
 		}
