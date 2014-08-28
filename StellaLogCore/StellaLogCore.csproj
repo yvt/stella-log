@@ -38,6 +38,7 @@
     <Compile Include="VersionController.cs" />
     <Compile Include="LocalConfigManager.cs" />
     <Compile Include="LogBook.cs" />
+    <Compile Include="NestedTransaction.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
