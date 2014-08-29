@@ -46,5 +46,9 @@
       <Project>{201F7E7E-51A8-4EF7-A6F1-438661447567}</Project>
       <Name>StellaDB</Name>
     </ProjectReference>
+    <ProjectReference Include="..\BitDelta\BitDelta.csproj">
+      <Project>{80B5C70A-8B56-405E-874E-2862F71AD833}</Project>
+      <Name>BitDelta</Name>
+    </ProjectReference>
   </ItemGroup>
 </Project>

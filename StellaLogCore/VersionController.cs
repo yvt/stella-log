@@ -22,6 +22,12 @@ namespace Yavit.StellaLog.Core
 		readonly StellaDB.Table revisionTable;
 		readonly Func<byte[], StellaDB.Table.PreparedQuery> revisionTableLookupQuery;
 
+		readonly StellaDB.Table deltaTable;
+		readonly Func<byte[], byte[], long, StellaDB.Table.PreparedQuery> deltaTableLookupQuery;
+		readonly Func<byte[], StellaDB.Table.PreparedQuery> deltaTableFindByRevisionQuery;
+
+
+
 		[Serializable]
 		struct DbBranch
 		{
@@ -55,6 +61,15 @@ namespace Yavit.StellaLog.Core
 			}
 		}
 
+		[Serializable]
+		struct DbDelta
+		{
+			public byte[] Revision;
+			public byte[] Table;
+			public long RowId;
+			public byte[] Delta;
+		}
+
 		internal VersionController (LogBook book)
 		{
 			this.book = book;
@@ -62,12 +77,18 @@ namespace Yavit.StellaLog.Core
 
 			branchTable = db["StellaVCS.Branches"];
 			revisionTable = db ["StellaVCS.Revisions"];
+			deltaTable = db ["StellaVCS.Deltas"];
 
 			branchTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Name", 32)
 			});
 			revisionTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Id", RevisionIdLength)
+			});
+			deltaTable.EnsureIndex (new [] {
+				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Revision", RevisionIdLength),
+				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Table", 48),
+				StellaDB.Table.IndexEntry.CreateNumericIndexEntry("RowId")
 			});
 
 			{
@@ -82,6 +103,29 @@ namespace Yavit.StellaLog.Core
 				var q = revisionTable.Prepare ((rowId, value) => value ["Id"] == nameval);
 				revisionTableLookupQuery = (name) => {
 					nameval = name; return q;
+				};
+			}
+			{
+				byte[] revisionval = null;
+				byte[] tableval = null;
+				long rowIdVal = 0;
+				var q = deltaTable.Prepare ((rowId, value) => 
+					value ["Revision"] == revisionval &&
+					value["Table"] == tableval &&
+					value["RowId"] == rowIdVal);
+				deltaTableLookupQuery = (revision, table, rowId) => {
+					revisionval = revision;
+					tableval = table;
+					rowIdVal = rowId;
+					return q;
+				};
+			}
+			{
+				byte[] revisionval = null;
+				var q = deltaTable.Prepare ((rowId, value) => value ["Revision"] == revisionval);
+				deltaTableFindByRevisionQuery = (revision) => {
+					revisionval = revision;
+					return q;
 				};
 			}
 
@@ -258,6 +302,8 @@ namespace Yavit.StellaLog.Core
 
 		public void SetCurrentBranch(string name)
 		{
+			CheckNoLocalModifications ();
+
 			if (GetCurrentBranch() == name) {
 				return;
 			}
@@ -296,6 +342,8 @@ namespace Yavit.StellaLog.Core
 		/// <param name="revision">Revision.</param>
 		public void SetCurrentRevision(byte[] revision)
 		{
+			CheckNoLocalModifications ();
+
 			var path = ComputeCommitTreePath (CurrentRevisionRaw, revision);
 			if (path == null) {
 				// No change.
@@ -417,6 +465,8 @@ namespace Yavit.StellaLog.Core
 		{
 			ValidateRevisionId (revision);
 
+			CheckNoLocalModifications ();
+
 			var comparer = StellaDB.DefaultKeyComparer.Instance;
 			if (comparer.Equals(revision, CurrentRevisionRaw)) {
 				return;
@@ -433,12 +483,32 @@ namespace Yavit.StellaLog.Core
 
 		#region Merge
 
+		struct DeltaOperation
+		{
+			public long DeltaTableRowId;
+			public bool Revert;
+		}
+
+
+
+		public class MergeSession
+		{
+			readonly VersionController vc;
+
+			public MergeSession(VersionController vc, byte[] mergedRevision)
+			{
+				this.vc = vc;
+			}
+
+		}
+
 		public void MergeRevision(byte[] mergedRevision)
 		{
 			ValidateRevisionId (mergedRevision);
+			CheckNoLocalModifications ();
 
 			// 
-			var co = ComputeCommitTreePath (CurrentRevisionRaw, mergedRevision);
+			//var co = ComputeCommitTreePath (CurrentRevisionRaw, mergedRevision);
 
 			throw new NotImplementedException ();
 		}
@@ -460,7 +530,18 @@ namespace Yavit.StellaLog.Core
 			}
 
 			using (var t = book.BeginTransaction()) {
-				throw new NotImplementedException ();
+				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
+					var delta = deltaRow.ToObject<DbDelta> ();
+					var table = GetTableImpl (delta.Table);
+					var tableRow = table.FetchRaw (delta.RowId);
+					var original = tableRow ?? new byte[] { };
+					var updated = deltaEncoder.DecodeY (delta.Delta, original);
+					if (updated.Length == 0) {
+						table.Delete (delta.RowId);
+					} else {
+						table.UpdateRaw (delta.RowId, updated);
+					}
+				}
 
 				CurrentRevisionRaw = r.DbRevision.Id;
 
@@ -484,7 +565,18 @@ namespace Yavit.StellaLog.Core
 			}
 
 			using (var t = book.BeginTransaction ()) {
-				throw new NotImplementedException ();
+				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
+					var delta = deltaRow.ToObject<DbDelta> ();
+					var table = GetTableImpl (delta.Table);
+					var tableRow = table.FetchRaw (delta.RowId);
+					var original = tableRow ?? new byte[] { };
+					var updated = deltaEncoder.DecodeX (delta.Delta, original);
+					if (updated.Length == 0) {
+						table.Delete (delta.RowId);
+					} else {
+						table.UpdateRaw (delta.RowId, updated);
+					}
+				}
 
 				CurrentRevisionRaw = r.DbRevision.ReferenceRevision;
 
@@ -493,6 +585,224 @@ namespace Yavit.StellaLog.Core
 		}
 
 		#endregion
+
+		#region Local Modifications
+
+		static readonly byte[] LocalModificationRevisionId = new byte[] {};
+
+		// Not thread-safe. Don't make it static.
+		readonly BitDelta.DeltaEncoder deltaEncoder = new BitDelta.DeltaEncoder();
+
+		readonly Dictionary<string, VersionControlledTableImpl> tables =
+			new Dictionary<string, VersionControlledTableImpl> ();
+		readonly Dictionary<byte[], VersionControlledTableImpl> tablesByBytes =
+			new Dictionary<byte[], VersionControlledTableImpl> (StellaDB.DefaultKeyComparer.Instance);
+
+		sealed class VersionControlledTableImpl: VersionControlledTable
+		{
+			readonly VersionController vc;
+			readonly byte[] tableNameBytes;
+
+			public VersionControlledTableImpl(VersionController vc, string tableName, StellaDB.Table table):
+			base(table)
+			{
+				this.vc = vc;
+				tableNameBytes = utf8.GetBytes(tableName);
+			}
+			protected override void RowBeingUpdated (long rowId, byte[] oldData, byte[] newData)
+			{
+				foreach (var deltaRow in vc.deltaTable.Query(vc.deltaTableLookupQuery(LocalModificationRevisionId, tableNameBytes, rowId))) {
+					// There's a delta
+					var delta = deltaRow.ToObject<DbDelta> ();
+					byte[] original = vc.deltaEncoder.DecodeX (delta.Delta, oldData);
+					byte[] newDelta = vc.deltaEncoder.Encode (original, newData);
+					if (newDelta.Length == 0) {
+						// Same as the original.
+						vc.deltaTable.Delete (deltaRow.RowId);
+					} else {
+						delta.Delta = newDelta;
+						vc.deltaTable.Update (deltaRow.RowId, delta);
+					}
+					return;
+				}
+
+				// Delta not found (local modification is not yet made)
+				{
+					var delta = new DbDelta ();
+					delta.Revision = LocalModificationRevisionId;
+					delta.Table = tableNameBytes;
+					delta.RowId = rowId;
+					delta.Delta = vc.deltaEncoder.Encode (oldData, newData);
+					if (delta.Delta.Length == 0) {
+						return;
+					}
+					vc.deltaTable.Insert (delta, false);
+				}
+			}
+
+		}
+
+		public void RevertLocalModifications()
+		{
+			using (var t = book.BeginTransaction()) {
+				var rowIds = new List<long> ();
+				foreach (var deltaRow in deltaTable.Query (deltaTableFindByRevisionQuery (LocalModificationRevisionId))) {
+					var delta = deltaRow.ToObject<DbDelta> ();
+					var table = GetTableImpl (delta.Table);
+					var tableRow = table.FetchRaw (delta.RowId);
+					var original = tableRow ?? new byte[] { };
+					var updated = deltaEncoder.DecodeX (delta.Delta, original);
+					if (updated.Length == 0) {
+						table.Delete (delta.RowId);
+					} else {
+						table.UpdateRaw (delta.RowId, updated);
+					}
+					rowIds.Add (deltaRow.RowId);
+				}
+				foreach (var row in rowIds)
+					deltaTable.Delete (row);
+			}
+		}
+
+		public bool HasLocalModifications()
+		{
+			return deltaTable.Query (deltaTableFindByRevisionQuery (LocalModificationRevisionId)).Any ();
+		}
+
+		public void CheckNoLocalModifications()
+		{
+			if (HasLocalModifications()) {
+				throw new InvalidOperationException ("Cannot perform this operation when there are any local modifications.");
+			}
+		}
+
+		VersionControlledTableImpl GetTableImpl(string name)
+		{
+			VersionControlledTableImpl table;
+			if (tables.TryGetValue(name, out table)) {
+				return table;
+			}
+			table = new VersionControlledTableImpl (this, name, book.Database [name]);
+			tables.Add (name, table);
+			tablesByBytes.Add (utf8.GetBytes (name), table);
+			return table;
+		}
+
+		VersionControlledTableImpl GetTableImpl(byte[] bytes)
+		{
+			VersionControlledTableImpl table;
+			if (tablesByBytes.TryGetValue(bytes, out table)) {
+				return table;
+			}
+			string name = utf8.GetString (bytes);
+			table = new VersionControlledTableImpl (this, name, book.Database [name]);
+			tables.Add (name, table);
+			tablesByBytes.Add (bytes, table);
+			return table;
+		}
+
+		internal VersionControlledTable GetTable(string name)
+		{
+			return GetTableImpl(name);
+		}
+		internal VersionControlledTable GetTable(byte[] name)
+		{
+			return GetTableImpl(name);
+		}
+
+		#endregion
+	}
+
+	internal abstract class VersionControlledTable
+	{
+		readonly StellaDB.Table baseTable;
+
+		protected VersionControlledTable(StellaDB.Table baseTable)
+		{
+			this.baseTable = baseTable;
+		}
+
+		public StellaDB.Table BaseTable
+		{
+			get { return baseTable; }
+		}
+
+		protected abstract void RowBeingUpdated (long rowId, byte[] oldData, byte[] newData);
+
+		public void UpdateRaw (long rowId, byte[] data)
+		{
+			if (data.Length == 0) {
+				Delete (rowId);
+				return;
+			}
+
+			var cmp = StellaDB.DefaultKeyComparer.Instance;
+			var oldData = FetchRaw (rowId);
+			if (oldData == null) {
+				RowBeingUpdated (rowId, new byte[] {}, data);
+				baseTable.InsertRaw (rowId, data, false);
+			} else {
+				if (cmp.Equals (oldData, data)) {
+					return;
+				}
+				RowBeingUpdated (rowId, oldData, data);
+				baseTable.UpdateRaw (rowId, data);
+			}
+		}
+		public void Update(long rowId, object data)
+		{
+			UpdateRaw (rowId, baseTable.Serializer.Serialize (data));
+		}
+
+		public void Delete(long rowId)
+		{
+			var oldData = FetchRaw (rowId);
+			if (oldData == null) {
+				return;
+			}
+			RowBeingUpdated (rowId, oldData, new byte[] {});
+			baseTable.Delete (rowId);
+		}
+
+		public long InsertRaw(byte[] data)
+		{
+			var rowId = baseTable.InsertRaw (data, false);
+			try {
+				RowBeingUpdated (rowId, new byte[] { }, data);
+			} catch {
+				baseTable.Delete (rowId);
+				throw;
+			}
+			return rowId;
+		}
+
+		public long Insert(object obj)
+		{
+			return InsertRaw (baseTable.Serializer.Serialize (obj));
+		}
+
+
+		public byte[] FetchRaw(long rowId)
+		{
+			return baseTable.FetchRaw(rowId);
+		}
+		public StellaDB.Table.ResultRow Fetch(long rowId)
+		{
+			return baseTable.Fetch(rowId);
+		}
+
+		public StellaDB.Table.PreparedQuery Prepare(
+			System.Linq.Expressions.Expression<Func<long, StellaDB.Ston.StonVariant, bool>> predicate)
+		{
+			return baseTable.Prepare (predicate);
+		}
+
+		public IEnumerable<StellaDB.Table.ResultRow> Query (StellaDB.Table.PreparedQuery stmt)
+		{
+			return baseTable.Query (stmt);
+		}
+
+
 	}
 }
 
