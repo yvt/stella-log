@@ -7,7 +7,7 @@ namespace Yavit.StellaLog.Core
 	{
 		readonly StellaDB.Database database;
 
-		StellaDB.Transaction currentDbTransaction = null;
+		StellaDB.ITransaction currentDbTransaction = null;
 		readonly Stack<NestedTransaction> stack = new Stack<NestedTransaction>();
 
 		public NestedTransactionManager(StellaDB.Database database)

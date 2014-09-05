@@ -10,7 +10,7 @@ namespace Yavit.StellaDB
 
 	public class Database: IDisposable
 	{
-		Transaction currentTransaction = null;
+		ITransaction currentTransaction = null;
 		LowLevel.LowLevelDatabase lldb;
 
 		readonly System.IO.Stream dbStream;
@@ -136,7 +136,7 @@ namespace Yavit.StellaDB
 			currentTransaction = null;
 		}
 
-		public Transaction BeginTransaction()
+		public ITransaction BeginTransaction()
 		{
 			if (currentTransaction != null) {
 				currentTransaction.Rollback ();

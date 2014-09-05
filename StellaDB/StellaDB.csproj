@@ -56,7 +56,6 @@
     <Compile Include="LowLevel\BTree.Blocks.cs" />
     <Compile Include="KeyComparer.cs" />
     <Compile Include="LowLevel\BTree.Enumerate.cs" />
-    <Compile Include="Transaction.cs" />
     <Compile Include="IO\Pager.cs" />
     <Compile Include="Utils\DeleteOnCloseFileStream.cs" />
     <Compile Include="Utils\MemoryBinaryWriter.cs" />
@@ -78,6 +77,7 @@
     <Compile Include="Utils\ArrayComparer.cs" />
     <Compile Include="Table.Indices.cs" />
     <Compile Include="MasterTable.cs" />
+    <Compile Include="Transaction.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

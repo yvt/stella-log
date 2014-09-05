@@ -2,7 +2,12 @@
 
 namespace Yavit.StellaDB
 {
-	public sealed class Transaction: IDisposable
+	public interface ITransaction: IDisposable
+	{
+		void Commit();
+		void Rollback();
+	}
+	public sealed class Transaction: ITransaction
 	{
 		Database database;
 		bool commited = false;
