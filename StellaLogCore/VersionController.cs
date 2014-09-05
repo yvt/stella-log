@@ -642,6 +642,37 @@ namespace Yavit.StellaLog.Core
 
 		}
 
+		public void CommitLocalModifications(string message)
+		{
+			if (!HasLocalModifications()) {
+				throw new InvalidOperationException ("There are no local modifications.");
+			}
+			using (var t = book.BeginTransaction()) {
+				var revisionId = GenerateRevisionId ();
+
+				var rev = new DbRevision () {
+					Id = revisionId,
+					Message = message,
+					DateTime = DateTime.UtcNow,
+					Parents = new [] {
+						CurrentRevisionRaw
+					}
+				};
+
+				var rowIds = new List<long> ();
+				foreach (var deltaRow in deltaTable.Query (deltaTableFindByRevisionQuery (LocalModificationRevisionId))) {
+					rowIds.Add (deltaRow.RowId);
+				}
+				foreach (var rowId in rowIds) {
+					var delta = deltaTable.Fetch (rowId).ToObject<DbDelta> ();
+					delta.Revision = revisionId;
+					deltaTable.Update (rowId, delta);
+				}
+
+				CurrentRevisionRaw = revisionId;
+			}
+		}
+
 		public void RevertLocalModifications()
 		{
 			using (var t = book.BeginTransaction()) {
