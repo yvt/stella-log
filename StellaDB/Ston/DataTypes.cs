@@ -38,6 +38,11 @@ namespace Yavit.StellaDB.Ston
 		public const byte StringifiedInteger16 = 0x24;
 		public const byte StringifiedInteger32 = 0x25;
 		public const byte StringifiedInteger64 = 0x26;
+		public const byte ByteArray8 = 0x27;
+		public const byte ByteArray16 = 0x28;
+		public const byte ByteArray24 = 0x29;
+		public const byte ByteArray32 = 0x2a;
+		public const byte EmptyByteArray = 0x2b;
 		public const byte IntegerBase = 0x80; // above this are 7-bit signed integers
 	}
 }

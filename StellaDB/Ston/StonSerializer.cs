@@ -146,6 +146,8 @@ namespace Yavit.StellaDB.Ston
 				return reader.ReadChar ();
 			case StonReader.NodeType.String:
 				return reader.ReadString ().ToString ();
+			case StonReader.NodeType.ByteArray:
+				return reader.ReadString ().GetBytes();
 			default:
 				throw new InvalidOperationException ();
 			}
@@ -224,6 +226,11 @@ namespace Yavit.StellaDB.Ston
 				case TypeCode.DateTime:
 					throw new NotImplementedException ("Serializing DateTime is not implemented yet.");
 				case TypeCode.Object:
+					var bytes = obj as byte[];
+					if (bytes != null) {
+						writer.Write(bytes);
+						break;
+					}
 					var dic = obj as IEnumerable<KeyValuePair<string, object>>;
 					var enumerable = obj as IEnumerable<object>;
 					if (enumerable != null) {

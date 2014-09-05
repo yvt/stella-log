@@ -19,7 +19,8 @@ namespace Yavit.StellaDB.Ston
 			Double,
 			Boolean,
 			Char,
-			String
+			String,
+			ByteArray
 		}
 		readonly Utils.MemoryBinaryReader reader;
 
@@ -161,6 +162,12 @@ namespace Yavit.StellaDB.Ston
 				case DataTypes.StringifiedInteger32:
 				case DataTypes.StringifiedInteger64:
 					return NodeType.String;
+				case DataTypes.EmptyByteArray:
+				case DataTypes.ByteArray8:
+				case DataTypes.ByteArray16:
+				case DataTypes.ByteArray24:
+				case DataTypes.ByteArray32:
+					return NodeType.ByteArray;
 				case DataTypes.EOMLMarker:
 					var st = state.Peek ();
 					if (st != State.EndOfArray && st != State.EndOfMap) {
@@ -197,6 +204,7 @@ namespace Yavit.StellaDB.Ston
 			int len = 1;
 			switch (DataType) {
 			case DataTypes.EmptyString:
+			case DataTypes.EmptyByteArray:
 				break;
 			case DataTypes.StringifiedSignedInteger8:
 			case DataTypes.StringifiedInteger8:
@@ -211,6 +219,10 @@ namespace Yavit.StellaDB.Ston
 			case DataTypes.StringifiedInteger64:
 				len += 8;
 				break;
+			case DataTypes.ByteArray8:
+			case DataTypes.ByteArray16:
+			case DataTypes.ByteArray24:
+			case DataTypes.ByteArray32:
 			case DataTypes.String8:
 			case DataTypes.String16:
 			case DataTypes.String24:
@@ -223,21 +235,25 @@ namespace Yavit.StellaDB.Ston
 					case DataTypes.EmptyString:
 						numBytes = 0;
 						break;
+					case DataTypes.ByteArray8:
 					case DataTypes.String8:
 						numBytes = buffer [offs++];
 						numBytes += 1;
 						break;
+					case DataTypes.ByteArray16:
 					case DataTypes.String16:
 						numBytes = buffer [offs++];
 						numBytes |= (uint)buffer [offs++] << 8;
 						numBytes += 1 + 0x100;
 						break;
+					case DataTypes.ByteArray24:
 					case DataTypes.String24:
 						numBytes = buffer [offs++];
 						numBytes |= (uint)buffer [offs++] << 8;
 						numBytes |= (uint)buffer [offs++] << 16;
 						numBytes += 1 + 0x10100;
 						break;
+					case DataTypes.ByteArray32:
 					case DataTypes.String32:
 						numBytes = buffer [offs++];
 						numBytes |= (uint)buffer [offs++] << 8;
@@ -262,6 +278,11 @@ namespace Yavit.StellaDB.Ston
 		}
 
 		public String ReadString()
+		{
+			return InternalReadString (false);
+		}
+
+		public String ReadByteArray()
 		{
 			return InternalReadString (false);
 		}
@@ -514,6 +535,9 @@ namespace Yavit.StellaDB.Ston
 				case NodeType.String:
 					ReadString ();
 					return;
+				case NodeType.ByteArray:
+					ReadByteArray ();
+					return;
 				default:
 					throw new InvalidOperationException ();
 				}
@@ -597,6 +621,10 @@ namespace Yavit.StellaDB.Ston
 				case DataTypes.StringifiedInteger32:
 				case DataTypes.StringifiedInteger64:
 					return utf8.GetBytes (ToString ());
+				case DataTypes.ByteArray8:
+				case DataTypes.ByteArray16:
+				case DataTypes.ByteArray24:
+				case DataTypes.ByteArray32:
 				case DataTypes.String8:
 				case DataTypes.String16:
 				case DataTypes.String24:
@@ -605,24 +633,29 @@ namespace Yavit.StellaDB.Ston
 					int offs = offset + 1;
 					checked {
 						switch (type) {
+						case DataTypes.EmptyByteArray:
 						case DataTypes.EmptyString:
 							numBytes = 0;
 							break;
+						case DataTypes.ByteArray8:
 						case DataTypes.String8:
 							numBytes = buffer [offs++];
 							numBytes += 1;
 							break;
+						case DataTypes.ByteArray16:
 						case DataTypes.String16:
 							numBytes = buffer[offs++];
 							numBytes |= (uint)buffer[offs++] << 8;
 							numBytes += 1 + 0x100;
 							break;
+						case DataTypes.ByteArray24:
 						case DataTypes.String24:
 							numBytes = buffer[offs++];
 							numBytes |= (uint)buffer[offs++] << 8;
 							numBytes |= (uint)buffer[offs++] << 16;
 							numBytes += 1 + 0x10100;
 							break;
+						case DataTypes.ByteArray32:
 						case DataTypes.String32:
 							numBytes = buffer[offs++];
 							numBytes |= (uint)buffer[offs++] << 8;
@@ -638,6 +671,7 @@ namespace Yavit.StellaDB.Ston
 					byte[] b = new byte[(int)numBytes];
 					Buffer.BlockCopy (buffer, offs, b, 0, (int)numBytes);
 					return b;
+				case DataTypes.EmptyByteArray:
 				case DataTypes.EmptyString:
 					return emptyBytes;
 				default:
@@ -690,11 +724,16 @@ namespace Yavit.StellaDB.Ston
 					}
 					return val.ToString ();
 				case DataTypes.EmptyString:
+				case DataTypes.EmptyByteArray:
 					return string.Empty;
 				case DataTypes.String8:
 				case DataTypes.String16:
 				case DataTypes.String24:
 				case DataTypes.String32:
+				case DataTypes.ByteArray8:
+				case DataTypes.ByteArray16:
+				case DataTypes.ByteArray24:
+				case DataTypes.ByteArray32:
 					return utf8.GetString (GetBytes ());
 				default:
 					throw new InvalidOperationException ();
@@ -706,6 +745,7 @@ namespace Yavit.StellaDB.Ston
 				var type = DataType;
 				switch (type) {
 				case DataTypes.EmptyString:
+				case DataTypes.EmptyByteArray:
 					return str.Length == 0;
 				case DataTypes.StringifiedSignedInteger8:
 				case DataTypes.StringifiedInteger8:

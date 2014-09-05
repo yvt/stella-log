@@ -131,7 +131,7 @@ namespace Yavit.StellaDB.Ston
 			ValueWritten ();
 		}
 			
-		public void Write(byte[] utf8)
+		public void WriteString(byte[] utf8)
 		{
 			CheckState ();
 
@@ -160,6 +160,38 @@ namespace Yavit.StellaDB.Ston
 				bw.Write ((byte)(l >> 24));
 			}
 			bw.Write (utf8);
+			ValueWritten ();
+		}
+
+		public void Write(byte[] bytes)
+		{
+			CheckState ();
+
+			if (bytes.Length == 0) {
+				bw.Write (DataTypes.EmptyByteArray);
+			} else if (bytes.Length <= 0x100) {
+				bw.Write ((byte)DataTypes.ByteArray8);
+				bw.Write ((byte)(bytes.Length - 1));
+			} else if (bytes.Length <= 0x10100) {
+				bw.Write ((byte)DataTypes.ByteArray16);
+				int l = bytes.Length - 0x101;
+				bw.Write ((byte)(l));
+				bw.Write ((byte)(l >> 8));
+			} else if (bytes.Length <= 0x1010100) {
+				bw.Write ((byte)DataTypes.ByteArray24);
+				int l = bytes.Length - 0x10101;
+				bw.Write ((byte)(l));
+				bw.Write ((byte)(l >> 8));
+				bw.Write ((byte)(l >> 16));
+			} else {
+				bw.Write ((byte)DataTypes.ByteArray32);
+				int l = bytes.Length - 0x1010101;
+				bw.Write ((byte)(l));
+				bw.Write ((byte)(l >> 8));
+				bw.Write ((byte)(l >> 16));
+				bw.Write ((byte)(l >> 24));
+			}
+			bw.Write (bytes);
 			ValueWritten ();
 		}
 
@@ -244,7 +276,7 @@ namespace Yavit.StellaDB.Ston
 				}
 			}
 
-			Write(utf8.GetBytes(str));
+			WriteString(utf8.GetBytes(str));
 		}
 
 		public void Write(long v)

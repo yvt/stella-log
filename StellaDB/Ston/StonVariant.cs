@@ -66,8 +66,16 @@ namespace Yavit.StellaDB.Ston
 		public override bool Equals (object obj)
 		{
 			var convertible1 = Value as IConvertible;
-			if (convertible1 == null)
+			if (convertible1 == null) {
+				var bytes = Value as byte[];
+				if (bytes != null) {
+					var bytes2 = obj as byte[];
+					if (bytes2 != null) {
+						return DefaultKeyComparer.Instance.Equals (bytes, bytes2);
+					}
+				}
 				return object.Equals (this, obj);
+			}
 			var convertible2 = obj as IConvertible;
 			if (convertible2 == null)
 				return object.Equals (this, obj);
@@ -147,13 +155,19 @@ namespace Yavit.StellaDB.Ston
 			default:
 				break;
 			}
+
 			return object.Equals (this, obj);
 		}
 
 		public override int GetHashCode ()
 		{
+			var val = Value;
 			// TODO: GetHashCode
-			return base.GetHashCode ();
+			var bytes = val as byte[];
+			if (bytes != null) {
+				return DefaultKeyComparer.Instance.GetHashCode (bytes);
+			}
+			return val.GetHashCode ();
 		}
 
 		#region Numeric Comparsions
@@ -251,11 +265,21 @@ namespace Yavit.StellaDB.Ston
 
 		#region Binary Comparsions
 
-		public static bool operator == (StonVariant x, byte[] y) { throw new NotImplementedException (); }
-		public static bool operator != (StonVariant x, byte[] y) { throw new NotImplementedException (); }
+		public int CompareTo (byte[] other)
+		{
+			var bytes = Value as byte[];
+			if (bytes == null || other == null) 
+				throw new StonVariantException ();
+			return DefaultKeyComparer.Instance.Compare (bytes, 0, bytes.Length, other, 0, other.Length);
+		}
+		public static bool operator <  (StonVariant x, byte[] y) { return x.CompareTo(y) < 0; }
+		public static bool operator >  (StonVariant x, byte[] y) { return x.CompareTo(y) > 0; }
+		public static bool operator <= (StonVariant x, byte[] y) { return x.CompareTo(y) <= 0; }
+		public static bool operator >= (StonVariant x, byte[] y) { return x.CompareTo(y) >= 0; }
+		public static bool operator == (StonVariant x, byte[] y) { return x.CompareTo(y) == 0; }
+		public static bool operator != (StonVariant x, byte[] y) { return x.CompareTo(y) != 0; }
 
 		#endregion
-		// TODO: binary comparsion
 	}
 
     [Serializable]

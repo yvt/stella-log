@@ -4,7 +4,6 @@
 <#@ import namespace="System.Text" #>
 <#@ import namespace="System.Collections.Generic" #>
 using NUnit.Framework;
-using NUnit.Framework.SyntaxHelpers;
 using System;
 using Yavit.StellaDB.Ston;
 using System.Collections.Generic;
@@ -43,6 +42,11 @@ namespace Yavit.StellaDB.Test
 			s += s; s += s; s += s; s += s; s += s;
 			RoundTrip(s);
 		}
+
+		[Test ()] public void ByteArray1 ()			{ RoundTrip (new byte[] {}); }
+		[Test ()] public void ByteArray2 ()			{ RoundTrip (new byte[] {114, 51, 4}); }
+		[Test ()] public void ByteArray3 ()			{ RoundTrip (Utils.GenerateRandomBytes(512)); }
+		[Test ()] public void ByteArray4 ()			{ RoundTrip (Utils.GenerateRandomBytes(1024 * 512)); }
 
 		[Test ()] public void Array ()				{ RoundTrip (new object[] {1, 2, 3}, typeof(IEnumerable<object>)); }
 
