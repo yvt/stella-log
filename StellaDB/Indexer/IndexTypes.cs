@@ -11,6 +11,8 @@ namespace Yavit.StellaDB.Indexer
 		public abstract KeyParameter Parameters { get; }
 		public abstract int KeyLength { get; }
 		public abstract bool EncodeKey(object value, byte[] output, int offset);
+		public abstract void EncodeSupremum (byte[] output, int offset);
+		public abstract void EncodeInfimum (byte[] output, int offset);
 		public abstract bool SupportsType(Type type);
 	}
 
@@ -25,8 +27,71 @@ namespace Yavit.StellaDB.Indexer
 
 		internal override KeyProvider CreateKeyProvider ()
 		{
-			throw new NotImplementedException ();
+			return new BinaryKeyProvider (KeyLength);
 		}
+	}
+	sealed class BinaryKeyProvider: KeyProvider
+	{
+		readonly int keyLength;
+
+		public BinaryKeyProvider(int keyLength)
+		{
+			if (keyLength < 1) {
+				throw new ArgumentOutOfRangeException ("keyLength");
+			}
+			this.keyLength = keyLength;
+		}
+
+		public override bool EncodeKey (object value, byte[] output, int offset)
+		{
+			var b = value as byte[];
+			if (b == null) {
+				return false;
+			}
+
+			int filllen = Math.Min (keyLength, b.Length);
+			Buffer.BlockCopy (b, 0, output, offset, filllen);
+			InternalUtils.ZeroFill (output, offset + filllen, keyLength - filllen);
+			return true;
+		}
+
+		public override void EncodeSupremum (byte[] output, int offset)
+		{
+			for (int i = offset, count = keyLength; count > 0; --count, ++i)
+				output [i] = 255;
+		}
+
+		public override void EncodeInfimum (byte[] output, int offset)
+		{
+			for (int i = offset, count = keyLength; count > 0; --count, ++i)
+				output [i] = 0;
+		}
+
+		public override bool SupportsType (Type type)
+		{
+			return typeof(byte[]).IsAssignableFrom (type);
+		}
+
+		public override IKeyComparer KeyComparer {
+			get {
+				return DefaultKeyComparer.Instance;
+			}
+		}
+
+		public override KeyParameter Parameters {
+			get {
+				return new BinaryKeyParameters () {
+					KeyLength = keyLength
+				};
+			}
+		}
+
+		public override int KeyLength {
+			get {
+				return keyLength;
+			}
+		}
+
 	}
 
 	public sealed class NumericKeyParameters: KeyParameter
@@ -206,6 +271,16 @@ namespace Yavit.StellaDB.Indexer
 			default:
 				return false;
 			}
+		}
+
+		public override void EncodeSupremum (byte[] output, int offset)
+		{
+			EncodeDouble (double.PositiveInfinity, output, offset);
+		}
+
+		public override void EncodeInfimum (byte[] output, int offset)
+		{
+			EncodeDouble (double.NegativeInfinity, output, offset);
 		}
 
 		static readonly System.Collections.Generic.HashSet<Type> types =

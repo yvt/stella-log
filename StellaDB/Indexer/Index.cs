@@ -101,6 +101,20 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
+		public override void EncodeSupremum (byte[] output, int offset)
+		{
+			foreach (var field in fields) {
+				field.Field.KeyProvider.EncodeSupremum (output, offset + field.Offset);
+			}
+		}
+
+		public override void EncodeInfimum (byte[] output, int offset)
+		{
+			foreach (var field in fields) {
+				field.Field.KeyProvider.EncodeInfimum (output, offset + field.Offset);
+			}
+		}
+
 		public override bool SupportsType (Type type)
 		{
 			return typeof(Row).IsAssignableFrom(type);

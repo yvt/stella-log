@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Collections.Generic;
 
 namespace Yavit.StellaDB.Test
 {
@@ -56,6 +57,16 @@ namespace Yavit.StellaDB.Test
 			var table = db ["table"];
 			table.EnsureIndex (new [] {
 				Table.IndexEntry.CreateNumericIndexEntry("hoge")
+			});
+		}
+
+		[Test]
+		public void EnsureIndex2()
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["table"];
+			table.EnsureIndex (new [] {
+				Table.IndexEntry.CreateBinaryIndexEntry("hoge", 32)
 			});
 		}
 
@@ -165,6 +176,21 @@ namespace Yavit.StellaDB.Test
 			}
 		}
 
+		[Test]
+		public void InsertManyBinary([Values(0, 1, 10, 100, 1000)] int count)
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["table"];
+			var items = (from e in Enumerable.Range (1, count)
+			select new KeyValuePair<int, byte[]> (e, Utils.GenerateRandomBytes (32))).ToArray();
+			foreach (var i in items) {
+				table.Insert (i.Key, i.Value, false);
+			}
+			foreach (var i in items) {
+				Assert.That (table.Fetch (i.Key).ToObject (), Is.EqualTo (i.Value));
+			}
+		}
+
 		void QueryTestRowIdFilter(Expression<Func<long, Ston.StonVariant, bool>> pred)
 		{
 			var db = Database.CreateMemoryDatabase ();
@@ -239,6 +265,101 @@ namespace Yavit.StellaDB.Test
 		[Test] public void QueryTestValueFilter8()
 		{ QueryTestValueFilter((other, value) => false); }
 
+		[Serializable]
+		public class TestClass
+		{
+			public int Value;
+		}
+
+		void QueryNumericIndexedFilter(Expression<Func<long, Ston.StonVariant, bool>> pred)
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["table"];
+			table.EnsureIndex (new [] {
+				Table.IndexEntry.CreateNumericIndexEntry("Value")
+			});
+
+			var items = Enumerable.Range (1, 100).ToArray();
+			foreach (var i in items) {
+				table.Insert (new TestClass() { Value = i }, false);
+			}
+
+			var stmt = table.Prepare (pred);
+			var result = (from e in table.Query (stmt)
+				select e.ToObject<TestClass> ().Value).ToArray();
+
+			var compiled = pred.Compile ();
+			var expected = items.Where (v => compiled (v, new Ston.StaticStonVariant(new Dictionary<string, object>() {
+				{"Value", v}
+			}))).ToArray();
+
+			Assert.That (result, Is.EquivalentTo (expected));
+		}
+
+		[Test] public void QueryNumericIndexedFilter1([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] >= param); }
+		[Test] public void QueryNumericIndexedFilter2([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] > param); }
+		[Test] public void QueryNumericIndexedFilter3([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] <= param); }
+		[Test] public void QueryNumericIndexedFilter4([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] < param); }
+		[Test] public void QueryNumericIndexedFilter5([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] == param); }
+		[Test] public void QueryNumericIndexedFilter6([Range(1, 100, 17)] int param)
+		{ QueryNumericIndexedFilter((other, value) => value["Value"] != param); }
+		[Test] public void QueryNumericIndexedFilter7()
+		{ QueryNumericIndexedFilter((other, value) => true); }
+		[Test] public void QueryNumericIndexedFilter8()
+		{ QueryNumericIndexedFilter((other, value) => false); }
+
+		[Serializable]
+		public class TestClass2
+		{
+			public byte[] Value;
+		}
+
+		void QueryBinaryIndexedFilter(Expression<Func<long, Ston.StonVariant, bool>> pred)
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["table"];
+			table.EnsureIndex (new [] {
+				Table.IndexEntry.CreateBinaryIndexEntry("Value", 8)
+			});
+
+			var items = Enumerable.Range (1, 100).ToArray();
+			foreach (var i in items) {
+				table.Insert (new TestClass2() { Value = new [] {(byte)i} }, false);
+			}
+
+			var stmt = table.Prepare (pred);
+			var result = (from e in table.Query (stmt)
+				select e.ToObject<TestClass2> ().Value[0]).ToArray();
+
+			var compiled = pred.Compile ();
+			var expected = items.Where (v => compiled (v, new Ston.StaticStonVariant(new Dictionary<string, object>() {
+				{"Value", new [] {(byte)v}}
+			}))).ToArray();
+
+			Assert.That (result, Is.EquivalentTo (expected));
+		}
+
+		[Test] public void QueryBinaryIndexedFilter1([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] >= new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter2([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] > new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter3([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] <= new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter4([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] < new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter5([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] == new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter6([Range(1, 100, 17)] int param)
+		{ QueryBinaryIndexedFilter((other, value) => value["Value"] != new [] {(byte)param}); }
+		[Test] public void QueryBinaryIndexedFilter7()
+		{ QueryBinaryIndexedFilter((other, value) => true); }
+		[Test] public void QueryBinaryIndexedFilter8()
+		{ QueryBinaryIndexedFilter((other, value) => false); }
 
 
 	}
