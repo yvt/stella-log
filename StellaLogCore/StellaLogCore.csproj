@@ -31,6 +31,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -39,6 +40,8 @@
     <Compile Include="LocalConfigManager.cs" />
     <Compile Include="LogBook.cs" />
     <Compile Include="NestedTransaction.cs" />
+    <Compile Include="Utils\PriorityQueue.cs" />
+    <Compile Include="Utils\ArrayUtils.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -50,5 +53,8 @@
       <Project>{80B5C70A-8B56-405E-874E-2862F71AD833}</Project>
       <Name>BitDelta</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Utils\" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.ComponentModel;
 using System.Linq;
+using Yavit.StellaLog.Core.Utils;
 
 namespace Yavit.StellaLog.Core
 {
@@ -26,7 +27,10 @@ namespace Yavit.StellaLog.Core
 		readonly Func<byte[], byte[], long, StellaDB.Table.PreparedQuery> deltaTableLookupQuery;
 		readonly Func<byte[], StellaDB.Table.PreparedQuery> deltaTableFindByRevisionQuery;
 
-
+		readonly StellaDB.Table mergeTable;
+		readonly StellaDB.Table.PreparedQuery mergeTableEnumerateQuery;
+		readonly Func<byte[], long, StellaDB.Table.PreparedQuery> mergeTableLookupQuery;
+		readonly Func<byte[], StellaDB.Table.PreparedQuery> mergeTableFindByTableQuery;
 
 		[Serializable]
 		struct DbBranch
@@ -70,6 +74,21 @@ namespace Yavit.StellaLog.Core
 			public byte[] Delta;
 		}
 
+		[Serializable]
+		struct DbMergeItem
+		{
+			public byte[] Table;
+			public long RowId;
+
+			public byte[] Original;
+			public byte[] Value1;
+			public byte[] Value2;
+			public byte[] Revision1;
+			public byte[] Revision2;
+			public double Time1;
+			public double Time2;
+		}
+
 		internal VersionController (LogBook book)
 		{
 			this.book = book;
@@ -78,6 +97,7 @@ namespace Yavit.StellaLog.Core
 			branchTable = db["StellaVCS.Branches"];
 			revisionTable = db ["StellaVCS.Revisions"];
 			deltaTable = db ["StellaVCS.Deltas"];
+			mergeTable = db ["StellaVCS.Merge"];
 
 			branchTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Name", 32)
@@ -87,6 +107,10 @@ namespace Yavit.StellaLog.Core
 			});
 			deltaTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Revision", RevisionIdLength),
+				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Table", 48),
+				StellaDB.Table.IndexEntry.CreateNumericIndexEntry("RowId")
+			});
+			mergeTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Table", 48),
 				StellaDB.Table.IndexEntry.CreateNumericIndexEntry("RowId")
 			});
@@ -128,6 +152,28 @@ namespace Yavit.StellaLog.Core
 					return q;
 				};
 			}
+			{
+				byte[] tableval = null;
+				long rowIdVal = 0;
+				var q = mergeTable.Prepare ((rowId, value) => 
+					value["Table"] == tableval &&
+					value["RowId"] == rowIdVal);
+				mergeTableLookupQuery = (table, rowId) => {
+					tableval = table;
+					rowIdVal = rowId;
+					return q;
+				};
+			}
+			{
+				byte[] tableval = null;
+				var q = mergeTable.Prepare ((rowId, value) => 
+					value["Table"] == tableval);
+				mergeTableFindByTableQuery = (table) => {
+					tableval = table;
+					return q;
+				};
+			}
+			mergeTableEnumerateQuery = mergeTable.Prepare((rowId, value) => true);
 
 			if (CurrentBranchRaw == null) {
 				// Not initialized yet.
@@ -303,6 +349,7 @@ namespace Yavit.StellaLog.Core
 		public void SetCurrentBranch(string name)
 		{
 			CheckNoLocalModifications ();
+			CheckNoIncompleteMerge ();
 
 			if (GetCurrentBranch() == name) {
 				return;
@@ -343,7 +390,12 @@ namespace Yavit.StellaLog.Core
 		public void SetCurrentRevision(byte[] revision)
 		{
 			CheckNoLocalModifications ();
+			CheckNoIncompleteMerge ();
 
+			SetCurrentRevisionImpl (revision);
+		}
+		void SetCurrentRevisionImpl(byte[] revision)
+		{
 			var path = ComputeCommitTreePath (CurrentRevisionRaw, revision);
 			if (path == null) {
 				// No change.
@@ -457,6 +509,104 @@ namespace Yavit.StellaLog.Core
 			return ret;
 		}
 
+		sealed class PathItem
+		{
+			public byte[] RevisionId;
+			public Revision Revision;
+			public PathItem Inflow; // Node to the input revision
+			public int InputId;
+		}
+
+		Tuple<Revision[], Revision[]> 
+		ComputePathToCommonAncestorOfRevisions(byte[] revisionId1, byte[] revisionId2)
+		{
+			ValidateRevisionId (revisionId1);
+			ValidateRevisionId (revisionId2);
+
+			// Perform a breadth first search
+			var items = new Dictionary<byte[], PathItem> (StellaDB.DefaultKeyComparer.Instance);
+
+			var rev1 = new PathItem () {
+				RevisionId = revisionId1,
+				InputId = 1,
+				Revision = LookupRevision(revisionId1)
+			};
+			var rev2 = new PathItem () {
+				RevisionId = revisionId2,
+				InputId = 2,
+				Revision = LookupRevision(revisionId2)
+			};
+			items.Add (rev1.RevisionId, rev1);
+			items.Add (rev2.RevisionId, rev2);
+
+			// (Latest revision is traversed first.)
+			var queue = new Utils.PriorityQueue<double, PathItem>();
+			queue.Enqueue (-rev1.Revision.DbRevision.Timestamp, rev1);
+			queue.Enqueue (-rev2.Revision.DbRevision.Timestamp, rev2);
+
+			PathItem common = null;
+			PathItem anotherInflow = null;
+
+			while (common == null && queue.Count > 0) {
+				var item = queue.Dequeue ();
+				var parents = item.Value.Revision.DbRevision.Parents;
+				foreach (var parentId in parents) {
+					PathItem pitem;
+					if (items.TryGetValue(parentId, out pitem)) {
+						if (item.Value.InputId == pitem.InputId) {
+							// Meet up
+							continue;
+						} else {
+							// Found the common ancestor.
+							common = pitem;
+							anotherInflow = item.Value;
+							break;
+						}
+					} else {
+						pitem = new PathItem () {
+							RevisionId = parentId,
+							InputId = item.Value.InputId,
+							Revision = LookupRevision (parentId),
+							Inflow = item.Value
+						};
+						items.Add (pitem.RevisionId, pitem);
+						queue.Enqueue (-pitem.Revision.DbRevision.Timestamp, pitem);
+					}
+				}
+			}
+
+			if (common == null) {
+				throw new InvalidOperationException (string.Format(
+					"The common ancestor of revision {0} and {1} was not found.",
+					RevisionIdToString(revisionId1),
+					RevisionIdToString(revisionId2)));
+			}
+
+			var path = new List<Revision> ();
+
+			for (var e = common; e != null; e = e.Inflow) {
+				path.Add (e.Revision);
+			}
+
+			path.Reverse ();
+			var path1 = path.ToArray();
+
+			path.Clear ();
+			common.Inflow = anotherInflow;
+			for (var e = common; e != null; e = e.Inflow) {
+				path.Add (e.Revision);
+			}
+
+			path.Reverse ();
+			var path2 = path.ToArray();
+
+			if (common.InputId == 1) {
+				return Tuple.Create (path1, path2);
+			} else {
+				return Tuple.Create (path2, path1);
+			}
+		}
+
 		/// <summary>
 		/// Checks out the specified revision.
 		/// </summary>
@@ -466,6 +616,7 @@ namespace Yavit.StellaLog.Core
 			ValidateRevisionId (revision);
 
 			CheckNoLocalModifications ();
+			CheckNoIncompleteMerge ();
 
 			var comparer = StellaDB.DefaultKeyComparer.Instance;
 			if (comparer.Equals(revision, CurrentRevisionRaw)) {
@@ -483,34 +634,233 @@ namespace Yavit.StellaLog.Core
 
 		#region Merge
 
-		struct DeltaOperation
+
+		internal byte[] CurrentMergeTargetRevisionId
 		{
-			public long DeltaTableRowId;
-			public bool Revert;
-		}
-
-
-
-		public class MergeSession
-		{
-			readonly VersionController vc;
-
-			public MergeSession(VersionController vc, byte[] mergedRevision)
-			{
-				this.vc = vc;
+			get {
+				return (byte[])book.LocalConfig ["StellaVCS.MergeTargetRevision"];
 			}
-
+			set {
+				using (var t = book.BeginTransaction ()) {
+					book.LocalConfig ["StellaVCS.MergeTargetRevision"] = value;
+					t.Commit ();
+				}
+			}
+		}
+		internal byte[] CurrentMergedRevisionId
+		{
+			get {
+				return (byte[])book.LocalConfig ["StellaVCS.MergedRevision"];
+			}
+			set {
+				using (var t = book.BeginTransaction ()) {
+					book.LocalConfig ["StellaVCS.MergedRevision"] = value;
+					t.Commit ();
+				}
+			}
+		}
+		internal byte[] CurrentMergeOriginId
+		{
+			get {
+				return (byte[])book.LocalConfig ["StellaVCS.MergeOrigin"];
+			}
+			set {
+				using (var t = book.BeginTransaction ()) {
+					book.LocalConfig ["StellaVCS.MergeOrigin"] = value;
+					t.Commit ();
+				}
+			}
 		}
 
-		public void MergeRevision(byte[] mergedRevision)
+		public enum MergeResult
+		{
+			AlreadyUpToDate,
+			MergedByFastForward,
+			MergedByAutoMerge,
+			MergeUnresolved
+		}
+
+		public MergeResult MergeRevision(byte[] mergedRevision)
 		{
 			ValidateRevisionId (mergedRevision);
+
 			CheckNoLocalModifications ();
+			CheckNoIncompleteMerge ();
 
-			// 
-			//var co = ComputeCommitTreePath (CurrentRevisionRaw, mergedRevision);
+			var currentRevision = CurrentRevisionRaw;
+			var path = ComputePathToCommonAncestorOfRevisions (currentRevision, mergedRevision);
+			var path1 = path.Item1;
+			var path2 = path.Item2;
+			var commonAncestor = path1.Last ();
 
-			throw new NotImplementedException ();
+			if (commonAncestor == path2[0]) {
+				return MergeResult.AlreadyUpToDate;
+			} else if (commonAncestor == path1[0]) {
+				// Fast forward.
+				CurrentRevisionRaw = mergedRevision;
+				return MergeResult.MergedByFastForward;
+			}
+
+			// Non-fast-forward merge required.
+			using (var t = book.BeginTransaction()) {
+				CurrentMergeOriginId = commonAncestor.DbRevision.Id;
+				CurrentMergeTargetRevisionId = currentRevision;
+				CurrentMergedRevisionId = mergedRevision;
+
+				SetCurrentRevision (commonAncestor.DbRevision.Id);
+
+				// Check deltas
+				{
+					var cpath = ComputeCommitTreePath (commonAncestor.DbRevision.Id, currentRevision);
+					if (cpath != null) {
+						foreach (var r in cpath.CurrentToCommonAncestor) {
+							RevertModificationsOfRevisionToMergeTable (r, false);
+						}
+						foreach (var r in cpath.CommonAncestorToGoal) {
+							ApplyModificationsOfRevisionToMergeTable (r, false);
+						}
+					}
+				}
+				{
+					var cpath = ComputeCommitTreePath (commonAncestor.DbRevision.Id, mergedRevision);
+					if (cpath != null) {
+						foreach (var r in cpath.CurrentToCommonAncestor) {
+							RevertModificationsOfRevisionToMergeTable (r, true);
+						}
+						foreach (var r in cpath.CommonAncestorToGoal) {
+							ApplyModificationsOfRevisionToMergeTable (r, true);
+						}
+					}
+				}
+
+				// Restore current revision
+				SetCurrentRevisionImpl (currentRevision);
+
+				// Try auto-merge
+				bool automergeFailed = false;
+				var succeededRowIds = new List<long> ();
+				foreach (var r in mergeTable.Query(mergeTableEnumerateQuery)) {
+					var item = r.ToObject<DbMergeItem> ();
+
+					var merged = item.Value1 ?? item.Value2;
+
+					if (item.Value1 != null && item.Value2 != null &&
+						!StellaDB.DefaultKeyComparer.Instance.Equals(item.Value1, item.Value2)) {
+						// Conflict!
+						automergeFailed = true;
+
+						// Try to choose the latest one
+						if (item.Time1 > item.Time2)
+							merged = item.Value1;
+						else
+							merged = item.Value2;
+					}
+
+					var table = GetTable (item.Table);
+					table.UpdateRaw (item.RowId, merged);
+					succeededRowIds.Add (r.RowId);
+				}
+
+				// Delete all succeeded merge
+				foreach (var r in succeededRowIds) {
+					mergeTable.Delete (r);
+				}
+
+				if (!automergeFailed) {
+					// Automerge succeeded.
+
+					CommitLocalModifications (GenerateMergeMessage (currentRevision, mergedRevision));
+					t.Commit ();
+					return MergeResult.MergedByAutoMerge;
+				}
+
+				// Automerge failed.
+
+				t.Commit ();
+				return MergeResult.MergeUnresolved;
+			}
+		}
+
+		static string GenerateMergeMessage(byte[] target, byte[] fromRevision)
+		{
+			return string.Format ("Merged {0} to {1}",
+				RevisionIdToString(fromRevision),
+				RevisionIdToString(target));
+		}
+
+		public bool HasUnresolvedMerge
+		{
+			get {
+				return mergeTable.Query(mergeTableEnumerateQuery).Any();
+			}
+		}
+
+		void CheckNoIncompleteMerge()
+		{
+			if (HasUnresolvedMerge) {
+				throw new InvalidOperationException ("There's an ongoing unresolved merge.");
+			}
+		}
+
+		internal struct ValueAndRevision
+		{
+			public byte[] Value;
+			public DateTime Timestamp;
+			public byte[] Revision;
+
+			public ValueAndRevision(byte[] revision, DateTime timestamp, byte[] value)
+			{
+				Revision = revision;
+				Timestamp = timestamp;
+				Value = value;
+			}
+		}
+
+		internal sealed class ConflicingRow
+		{
+			public VersionControlledTable Table;
+			public long RowId;
+			public ValueAndRevision Original;
+			public ValueAndRevision Current;
+			public ValueAndRevision Merged;
+		}
+
+		IEnumerable<ConflicingRow> GetConflictingRowsImpl(IEnumerable<DbMergeItem> items)
+		{
+			var originalRev = LookupRevision (CurrentMergeOriginId);
+			return from item in items
+				select new ConflicingRow () 
+			{
+				Table = GetTable(item.Table),
+				RowId = item.RowId,
+				Original = new ValueAndRevision(
+					originalRev.DbRevision.Id,
+					DateTime.FromOADate(originalRev.DbRevision.Timestamp),
+					item.Original
+				),
+				Current = new ValueAndRevision(
+					item.Revision1,
+					DateTime.FromOADate(item.Time1),
+					item.Value1
+				),
+				Merged = new ValueAndRevision(
+					item.Revision2,
+					DateTime.FromOADate(item.Time2),
+					item.Value2
+				)
+			};
+		}
+
+		internal IEnumerable<ConflicingRow> GetConflictingRows()
+		{
+			return GetConflictingRowsImpl (from r in mergeTable.Query(mergeTableEnumerateQuery)
+				select r.ToObject<DbMergeItem>());
+		}
+
+		internal IEnumerable<ConflicingRow> GetConflictingRows(string tableName)
+		{
+			return GetConflictingRowsImpl (from r in mergeTable.Query(mergeTableFindByTableQuery(utf8.GetBytes(tableName)))
+				select r.ToObject<DbMergeItem>());
 		}
 
 		#endregion
@@ -579,6 +929,96 @@ namespace Yavit.StellaLog.Core
 				}
 
 				CurrentRevisionRaw = r.DbRevision.ReferenceRevision;
+
+				t.Commit ();
+			}
+		}
+
+		void ApplyModificationsOfRevisionToMergeTable(Revision r, bool updateValue2)
+		{
+			using (var t = book.BeginTransaction()) {
+				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
+					var delta = deltaRow.ToObject<DbDelta> ();
+					var itemRow = mergeTable.Query (mergeTableLookupQuery (delta.Table, delta.RowId)).FirstOrDefault ();
+					bool created = false;
+					DbMergeItem item;
+					if (itemRow == null) {
+						created = true;
+						item = new DbMergeItem () {
+							Table = delta.Table,
+							RowId = delta.RowId
+						};
+
+						var table = GetTableImpl (delta.Table);
+						var tableRow = table.FetchRaw (delta.RowId);
+						item.Original = tableRow ?? new byte[] { };
+					} else {
+						item = itemRow.ToObject<DbMergeItem> ();
+					}
+
+					var updated = deltaEncoder.DecodeY (delta.Delta, 
+						(updateValue2 ? item.Value2 : item.Value1) ?? item.Original);
+					if (updateValue2) {
+						item.Value2 = updated;
+						item.Revision2 = r.DbRevision.Id;
+						item.Time2 = r.DbRevision.Timestamp;
+					} else {
+						item.Value1 = updated;
+						item.Revision1 = r.DbRevision.Id;
+						item.Time1 = r.DbRevision.Timestamp;
+					}
+
+					if (created) {
+						mergeTable.Insert (item, false);
+					} else {
+						mergeTable.Update (itemRow.RowId, item);
+					}
+				}
+
+				t.Commit ();
+			}
+		}
+		void RevertModificationsOfRevisionToMergeTable(Revision r, bool updateValue2)
+		{
+			using (var t = book.BeginTransaction()) {
+				var prev = LookupRevision (r.DbRevision.ReferenceRevision);
+				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
+					var delta = deltaRow.ToObject<DbDelta> ();
+					var itemRow = mergeTable.Query (mergeTableLookupQuery (delta.Table, delta.RowId)).FirstOrDefault ();
+					bool created = false;
+					DbMergeItem item;
+					if (itemRow == null) {
+						created = true;
+						item = new DbMergeItem () {
+							Table = delta.Table,
+							RowId = delta.RowId
+						};
+
+						var table = GetTableImpl (delta.Table);
+						var tableRow = table.FetchRaw (delta.RowId);
+						item.Original = tableRow ?? new byte[] { };
+					} else {
+						item = itemRow.ToObject<DbMergeItem> ();
+					}
+
+					var updated = deltaEncoder.DecodeX (delta.Delta, 
+						(updateValue2 ? item.Value2 : item.Value1) ?? item.Original);
+					if (updateValue2) {
+						item.Value2 = updated;
+						item.Revision2 = prev.DbRevision.Id;
+						item.Time2 = prev.DbRevision.Timestamp;
+					} else {
+						item.Value1 = updated;
+						item.Revision1 = prev.DbRevision.Id;
+						item.Time1 = prev.DbRevision.Timestamp;
+					}
+
+					if (created) {
+						mergeTable.Insert (item, false);
+					} else {
+						mergeTable.Update (itemRow.RowId, item);
+					}
+				}
 
 				t.Commit ();
 			}
@@ -667,6 +1107,18 @@ namespace Yavit.StellaLog.Core
 					var delta = deltaTable.Fetch (rowId).ToObject<DbDelta> ();
 					delta.Revision = revisionId;
 					deltaTable.Update (rowId, delta);
+				}
+
+				revisionTable.Insert (rev, false);
+
+				if (HasUnresolvedMerge) {
+					// Unresolved merge was resolved.
+					var rowIds2 =
+						from r in mergeTable.Query(mergeTableEnumerateQuery)
+						select r.RowId;
+					foreach (var r in rowIds2.ToArray()) {
+						mergeTable.Delete(r);
+					}
 				}
 
 				CurrentRevisionRaw = revisionId;
