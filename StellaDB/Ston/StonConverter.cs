@@ -63,7 +63,7 @@ namespace Yavit.StellaDB.Ston
 
 		static readonly Type dicType = typeof(IDictionary<string, object>);
 		static readonly MethodInfo dicTryGetValue = dicType.GetMethod ("TryGetValue", new [] {
-			typeof(string), typeof(object)
+			typeof(string), typeof(object).MakeByRefType()
 		});
 		static readonly MethodInfo dicAdd = dicType.GetMethod ("Add", new [] {
 			typeof(string), typeof(object)
@@ -103,7 +103,9 @@ namespace Yavit.StellaDB.Ston
 						assignExpr);
 				})).Concat(new [] { returnedObj });
 
-				var expr = Exprs.Expression.Block (exprs);
+				var expr = Exprs.Expression.Block (new[] {
+					tmpObj, returnedObj
+				}, exprs);
 
 				var func = Exprs.Expression.Lambda<Func<IDictionary<string, object>, object>> (expr,
 					           new [] { param });
@@ -138,13 +140,17 @@ namespace Yavit.StellaDB.Ston
 				var typedParam = Exprs.Expression.Variable (type, "inputTyped");
 				var dic = Exprs.Expression.Variable (dicType, "dictionary");
 				var expr = Exprs.Expression.Block (
+					new [] {
+						typedParam, dic
+					},
 					new Exprs.Expression [] {
 						Exprs.Expression.Assign(typedParam,	
 							Exprs.Expression.Convert(param, type)),
 						Exprs.Expression.Assign(dic,
-							Exprs.Expression.New(dicType))
+							Exprs.Expression.New(typeof(Dictionary<string, object>)))
 					}.Concat (fields.Select (field => {
-						var fieldexpr = Exprs.Expression.Field (typedParam, field.Info);
+						var fieldexpr = Exprs.Expression.Convert(Exprs.Expression.Field (typedParam, field.Info),
+							typeof(object));
 						var addExpr = Exprs.Expression.Call (dic, dicAdd, 
 							              Exprs.Expression.Constant (field.Name),
 							              fieldexpr);
@@ -152,7 +158,7 @@ namespace Yavit.StellaDB.Ston
 							return (Exprs.Expression)Exprs.Expression.IfThen (
 								Exprs.Expression.IsFalse (
 									Exprs.Expression.Call (objectEquals, fieldexpr,
-										Exprs.Expression.Constant (field.DefaultValue.Value))
+										Exprs.Expression.Constant (field.DefaultValue.Value, typeof(object)))
 								),
 								addExpr
 							);

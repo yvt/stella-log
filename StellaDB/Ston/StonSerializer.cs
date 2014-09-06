@@ -307,12 +307,23 @@ namespace Yavit.StellaDB.Ston
 
 			// Class with SerializableAttribute can be serialized
 			if (type.GetCustomAttributes(typeof(SerializableAttribute), false).Length > 0) {
+				// But, don't treat IDictionary<string, T> as Serializable.
+				foreach (var i in type.GetInterfaces()) {
+					if (i.IsGenericType &&
+						i.GetGenericTypeDefinition () == typeof(IDictionary<,>)) {
+						var param = i.GetGenericArguments ();
+						if (param [0] == typeof(string)) {
+							return null;
+						}
+					}
+				}
+
 				converter = new StonConverterForSerializable (type);
+				converters.Add (type, converter);
 				return converter;
 			}
 
-			throw new System.Runtime.Serialization.SerializationException 
-			("Failed to find serializer for the type " + type.FullName + ".");
+			return null;
 		}
 
 		#region CovarianceWrapper
