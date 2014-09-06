@@ -124,6 +124,62 @@ namespace Yavit.StellaDB.Benchmark
 			}
 		}
 
+
+		public static void TestTableRaw()
+		{
+			var path = Path.Combine(Path.GetTempPath(), "test.stelladb");
+			Console.WriteLine("Writing to {0}", path);
+			try { System.IO.File.Delete(path); }
+			catch { }
+			using (var db = Database.OpenFile(path, JournalingMode.Memory)) {
+				using (var t = db.BeginTransaction()) {
+					var table = db ["TestTable"];
+					var qr = table.Prepare ((foo, barr) => true);
+
+					var sw = new System.Diagnostics.Stopwatch ();
+					var b = new byte[4];
+
+					Console.Out.WriteLine ("Records,Elapsed Time [ms]");
+					for (int i = 1; i <= 1000000; ++i) {
+						for (int j = 3; j >= 0; --j) {
+							++b[j];
+							if (b[j] != 0) {
+								break;
+							} 
+						}
+						table.InsertRaw (b, false);
+						if (i % 10000 == 0) {
+							if (i == 10000) {
+								sw.Start ();
+							}
+							Console.Out.WriteLine ("{0}, {1}", i - 10000, sw.ElapsedMilliseconds);
+						}
+					}
+
+
+					Console.Out.WriteLine ("Enumerated Records,Elapsed Time [ms]");
+					{
+						int i = 0;
+						foreach (var e in table.Query(qr)) {
+							++i;
+							if (i % 10000 == 0) {
+								if (i == 10000) {
+									sw.Start ();
+								}
+								Console.Out.WriteLine ("{0}, {1}", i - 10000, sw.ElapsedMilliseconds);
+							}
+						}
+					}
+					Console.Out.WriteLine ("Flush Elapsed Time [ms]");
+					t.Commit();
+					Console.Out.WriteLine ("{0}", sw.ElapsedMilliseconds);
+
+				}
+
+			}
+
+		}
+
 		static void ScanSton(Ston.StonReader reader)
 		{
 			var isdic = new Stack<bool> ();
