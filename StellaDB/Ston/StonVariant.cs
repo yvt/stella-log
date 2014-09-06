@@ -280,6 +280,36 @@ namespace Yavit.StellaDB.Ston
 		public static bool operator != (StonVariant x, byte[] y) { return x.CompareTo(y) != 0; }
 
 		#endregion
+
+		public int CompareTo(object other)
+		{
+			var b = other as byte[];
+			if (b != null) {
+				return CompareTo (b);
+			}
+
+			var cvt = other as IConvertible;
+			if (cvt == null) {
+				throw new StonVariantException ();
+			}
+			switch (cvt.GetTypeCode()) {
+			case TypeCode.SByte:
+			case TypeCode.Byte:
+			case TypeCode.Int16:
+			case TypeCode.UInt16:
+			case TypeCode.Int32:
+			case TypeCode.UInt32:
+			case TypeCode.Int64:
+				return CompareTo (cvt.ToInt64 (null));
+			case TypeCode.UInt64:
+				return CompareTo (cvt.ToUInt64 (null));
+			case TypeCode.Single:
+			case TypeCode.Double:
+				return CompareTo (cvt.ToDouble (null));
+			default:
+				throw new StonVariantException ();
+			}
+		}
 	}
 
     [Serializable]

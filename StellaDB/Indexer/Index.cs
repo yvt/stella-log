@@ -86,7 +86,7 @@ namespace Yavit.StellaDB.Indexer
 			try {
 				var root = row.Value;
 				foreach (var field in this.fields) {
-					var fieldValue = field.Field.GetValue(root);
+					var fieldValue = field.Field.GetValue(root).Value;
 
 					if (!field.Field.KeyProvider.EncodeKey(fieldValue, output, offset + field.Offset)) {
 						return false;
@@ -101,11 +101,47 @@ namespace Yavit.StellaDB.Indexer
 			}
 		}
 
+		public static readonly object SupremumFieldValue = new object ();
+		public static readonly object InfimumFieldValue = new object ();
+
+		public bool EncodeKeyByFieldValues(long rowId, object[] values, byte[] output, int offset)
+		{
+			if (values.Length != fields.Length) {
+				throw new ArgumentException ("The number of provided field values doesn't match.");
+			}
+			try {
+				int i = 0;
+				foreach (var field in this.fields) {
+					var fieldValue = values[i++];
+
+					if (fieldValue == InfimumFieldValue) {
+						field.Field.KeyProvider.EncodeInfimum(output, offset + field.Offset);
+						continue;
+					}
+					if (fieldValue == SupremumFieldValue) {
+						field.Field.KeyProvider.EncodeSupremum(output, offset + field.Offset);
+						continue;
+					}
+					if (!field.Field.KeyProvider.EncodeKey(fieldValue, output, offset + field.Offset)) {
+						return false;
+					}
+				}
+
+				var bcvt = new InternalUtils.BitConverter(output);
+				bcvt.Set(offset + rowIdOffset, rowId);
+				return true;
+			} catch (Ston.StonVariantException) {
+				return false;
+			}
+		}
+
 		public override void EncodeSupremum (byte[] output, int offset)
 		{
 			foreach (var field in fields) {
 				field.Field.KeyProvider.EncodeSupremum (output, offset + field.Offset);
 			}
+			var bcvt = new InternalUtils.BitConverter(output);
+			bcvt.Set(offset + rowIdOffset, long.MaxValue);
 		}
 
 		public override void EncodeInfimum (byte[] output, int offset)
@@ -113,6 +149,8 @@ namespace Yavit.StellaDB.Indexer
 			foreach (var field in fields) {
 				field.Field.KeyProvider.EncodeInfimum (output, offset + field.Offset);
 			}
+			var bcvt = new InternalUtils.BitConverter(output);
+			bcvt.Set(offset + rowIdOffset, 0);
 		}
 
 		public override bool SupportsType (Type type)

@@ -250,7 +250,7 @@ namespace Yavit.StellaDB
 			} else if (plan.IndexUsage != null) {
 				unsorted = QueryByIndex (plan.IndexUsage);
 			} else {
-				throw new InvalidOperationException ("Plan not given.");
+				unsorted = Enumerable.Empty<ResultRow> ();
 			}
 
 			unsorted = unsorted.Where (row => plan.Expression (row.RowId, row.ToVariant ()));
@@ -279,7 +279,39 @@ namespace Yavit.StellaDB
 		}
 		IEnumerable<ResultRow> QueryByIndex(Indexer.QueryOptimizer.IndexUsage plan)
 		{
-			throw new NotImplementedException ("Query using index is not supported yet.");
+			var index = (QOIndex) plan.Index;
+			var tableIndex = index.TableIndex;
+			var istore = tableIndex.Store;
+			var entries = plan.Descending ? istore.EnumerateEntiresInDescendingOrder (plan.StartKey) :
+				istore.EnumerateEntiresInAscendingOrder (plan.StartKey);
+			var comparer = tableIndex.Index.KeyComparer;
+			foreach (var entry in entries) {
+				var key = entry.GetKey ();
+				if (plan.EndKey != null) {
+					if (plan.EndInclusive) {
+						if (plan.Descending ?
+							comparer.Compare(key, 0, key.Length, plan.EndKey, 0, plan.EndKey.Length) <= 0 :
+							comparer.Compare(key, 0, key.Length, plan.EndKey, 0, plan.EndKey.Length) >= 0) {
+							break;
+						}
+					} else {
+						if (plan.Descending ?
+							comparer.Compare(key, 0, key.Length, plan.EndKey, 0, plan.EndKey.Length) < 0 :
+							comparer.Compare(key, 0, key.Length, plan.EndKey, 0, plan.EndKey.Length) > 0) {
+							break;
+						}
+					}
+				}
+
+				// Indirect access
+				long rowId = tableIndex.Index.GetRowId (key, 0);
+				EncodeRowId (rowIdBuffer, rowId);
+				var e = store.FindEntry (rowIdBuffer);
+				if (e != null) {
+					var data = e.ReadValue ();
+					yield return new ResultRow (this, rowId, data);
+				}
+			}
 		}
 
 		#endregion

@@ -129,6 +129,16 @@ namespace Yavit.StellaDB
 			optimizer = null;
 		}
 
+		sealed class QOIndex: Indexer.QueryOptimizer.Index
+		{
+			public readonly TableIndex TableIndex;
+			public QOIndex(TableIndex index, double cardinality):
+			base(index.Index, cardinality)
+			{
+				TableIndex = index;
+			}
+		}
+
 		void EnsureQueryOptimizer()
 		{
 			if (optimizer != null) {
@@ -139,14 +149,8 @@ namespace Yavit.StellaDB
 
 			optimizer = new Indexer.QueryOptimizer ();
 			foreach (var idx in indices) {
-				optimizer.RegisterIndex (new Indexer.QueryOptimizer.Index() {
-					Cardinality = 1.0,
-					Parts = (from field in idx.Value.Index.GetFields()
-						select new Indexer.QueryOptimizer.IndexPart() {
-							Key = field.Name,
-							KeyProvider = field.KeyProvider
-						}).ToArray()
-				});
+				// FIXME: cardinality is currently approximated by field count
+				optimizer.RegisterIndex (new QOIndex(idx.Value, idx.Value.Index.GetFields().Count()));
 			}
 		}
 

@@ -129,6 +129,8 @@ namespace Yavit.StellaDB.Indexer
 				var type1 = (NumberType)buffer1 [offset1];
 				var type2 = (NumberType)buffer2 [offset2];
 
+				++offset1; ++offset2;
+
 				switch (type1) {
 				case NumberType.Int64:
 					switch (type2) {
@@ -138,7 +140,7 @@ namespace Yavit.StellaDB.Indexer
 					case NumberType.UInt64:
 						return -1;
 					case NumberType.Double:
-						return bc1.GetInt64 (offset1).CompareTo
+						return bc1.GetInt64 (offset1).CompareTo2
 							(bc2.GetDouble(offset2));
 					}
 					break;
@@ -150,17 +152,17 @@ namespace Yavit.StellaDB.Indexer
 						return bc1.GetUInt64 (offset1).CompareTo
 							(bc2.GetUInt64 (offset2));
 					case NumberType.Double:
-						return bc1.GetUInt64 (offset1).CompareTo
+						return bc1.GetUInt64 (offset1).CompareTo2
 							(bc2.GetDouble (offset2));
 					}
 					break;
 				case NumberType.Double:
 					switch (type2) {
 					case NumberType.Int64:
-						return bc1.GetDouble (offset1).CompareTo
+						return bc1.GetDouble (offset1).CompareTo2
 							(bc2.GetInt64(offset2));
 					case NumberType.UInt64:
-						return bc1.GetDouble (offset1).CompareTo
+						return bc1.GetDouble (offset1).CompareTo2
 							(bc2.GetUInt64(offset2));
 					case NumberType.Double:
 						return bc1.GetDouble (offset1).CompareTo

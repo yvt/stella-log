@@ -14,15 +14,28 @@ namespace Yavit.StellaDB.Indexer
 		}
 		public class Index
 		{
-			public IndexPart[] Parts;
-			public double Cardinality;
+			public readonly Indexer.Index BaseIndex;
+			public readonly IndexPart[] Parts;
+			public readonly double Cardinality;
+
+			public Index(Indexer.Index baseIndex, double cardinality)
+			{
+				BaseIndex = baseIndex;
+				Parts = (from i in baseIndex.GetFields()
+					select new IndexPart() {
+					Key = i.Name,
+					KeyProvider = i.KeyProvider
+					}).ToArray();
+				Cardinality = cardinality;
+			}
 		}
 
 		readonly List<Index> indices = new List<Index>();
 
 		public class ProcessResult
 		{
-			// Either RowIdUsage or IndexUsage becomes non-null
+			// Either RowIdUsage or IndexUsage might become non-null.
+			// When both are null, empty result set are returned
 			public RowIdUsage RowIdUsage;
 			public IndexUsage IndexUsage;
 
@@ -102,6 +115,28 @@ namespace Yavit.StellaDB.Indexer
 
 				var key = (string)constExpr.Value;
 				return key;
+			} else if (expr.NodeType == ExpressionType.Call) {
+				var callExpr = (MethodCallExpression)expr;
+				if (callExpr.Object != rootParamExpr) {
+					return null;
+				}
+				if (callExpr.Method.Name != "get_Item" ||
+					callExpr.Arguments.Count != 1) {
+					return null;
+				}
+
+				var keyExpr = callExpr.Arguments[0];
+				if (keyExpr.NodeType != ExpressionType.Constant) {
+					return null;
+				}
+
+				var constExpr = (ConstantExpression)keyExpr;
+				if (constExpr.Type != typeof(string)) {
+					return null;
+				}
+
+				var key = (string)constExpr.Value;
+				return key;
 			}
 			return null;
 		}
@@ -132,7 +167,7 @@ namespace Yavit.StellaDB.Indexer
 			GreaterThan,
 			GreaterThanOrEqual
 		}
-		struct Clause
+		class Clause
 		{
 			public string Name;
 			public ClauseType Type;
@@ -224,6 +259,7 @@ namespace Yavit.StellaDB.Indexer
 				// "RowId-constant"
 				if (binExpr.Left == rowIdParamExpr && binExpr.Right != rowIdParamExpr ||
 					binExpr.Left != rowIdParamExpr && binExpr.Right == rowIdParamExpr) {
+					cl.Name = null;
 					if (binExpr.Right == rowIdParamExpr) {
 						// swap left/right
 						cl.Right = binExpr.Left;
@@ -246,11 +282,176 @@ namespace Yavit.StellaDB.Indexer
 				return ProcessWithRowIdIndex (expr, rowIdClauses, sortKeys);
 			}
 
-			// TODO: optimize with keys
-
+			// Optimize with keys
+			var bestIndices = from index in indices
+			                  where index.Parts.All (part => clauses.ContainsKey (part.Key))
+							  orderby index.Cardinality descending
+			                  select index;
+			var bestIndex = bestIndices.FirstOrDefault ();
+			if (bestIndex != null) {
+				return ProcessWithIndex (expr, clauses, bestIndex, sortKeys);
+			}
 
 			// Optimization failure.
 			return ProcessWithRowIdIndex (expr, rowIdClauses, sortKeys);
+		}
+
+		sealed class FieldRange
+		{
+			public Ston.StonVariant MinValue;
+			public Ston.StonVariant MaxValue;
+			public bool IsMinExclusive;
+			public bool IsMaxExclusive;
+		}
+
+		Func<ProcessResult> ProcessWithIndex(Expression<Func<long, Ston.StonVariant, bool>> expr,
+			Dictionary<string, List<Clause>> clauses, Index index, SortKey[] sortKeys)
+		{
+			var compiledClausesEnumerable =
+				index.Parts.Select (part => {
+					List<Clause> list;
+					clauses.TryGetValue(part.Key, out list);
+					if (list == null) {
+						return null;
+					}
+
+					return from clause in list
+						select new {
+						Type = clause.Type,
+						Func = Expression.Lambda<Func<object>>(Expression.Convert(clause.Right, typeof(object))).Compile()
+					};
+				});
+			var compiledClauses = compiledClausesEnumerable.ToArray ();
+			var compiledExpr = expr.Compile ();
+			var ranges = new FieldRange[compiledClauses.Length];
+			byte[] startKey = new byte[index.BaseIndex.KeyLength];
+			byte[] endKey = new byte[index.BaseIndex.KeyLength];
+
+			return () => {
+				for (int i = 0; i < ranges.Length; ++i) {
+					Ston.StonVariant minValue = null;
+					Ston.StonVariant maxValue = null;
+					bool minExclusive = false, maxExclusive = false;
+
+					var clList = compiledClauses[i];
+					if (clList != null) {
+						foreach (var clause in clList) {
+							try {
+								var val = clause.Func();
+								if (val == null) {
+									continue;
+								}
+								switch (clause.Type) {
+								case ClauseType.GreaterThan:
+									if (object.ReferenceEquals(minValue, null) || minValue.CompareTo(val) < 0) {
+										minValue = new Ston.StaticStonVariant(val);
+										minExclusive = true;
+									} else if (minValue.CompareTo(val) == 0) {
+										minExclusive = true;
+									}
+									break;
+								case ClauseType.Equal:
+								case ClauseType.GreaterThanOrEqual:
+									if (object.ReferenceEquals(minValue, null) || minValue.CompareTo(val) < 0) {
+										minValue = new Ston.StaticStonVariant(val);
+										minExclusive = false;
+									}
+									break;
+								}
+								switch (clause.Type) {
+								case ClauseType.LessThan:
+									if (object.ReferenceEquals(maxValue, null) || maxValue.CompareTo(val) > 0) {
+										maxValue = new Ston.StaticStonVariant(val);
+										maxExclusive = true;
+									} else if (maxValue.CompareTo(val) == 0) {
+										maxExclusive = true;
+									}
+									break;
+								case ClauseType.Equal:
+								case ClauseType.LessThanOrEqual:
+									if (object.ReferenceEquals(maxValue, null) || maxValue.CompareTo(val) > 0) {
+										maxValue = new Ston.StaticStonVariant(val);
+										maxExclusive = false;
+									}
+									break;
+								}
+							} catch (Ston.StonVariantException) {}
+						}
+					}
+
+					if (ranges[i] == null) {
+						ranges[i] = new FieldRange();
+					}
+					var fr = ranges[i];
+					fr.MinValue = minValue;
+					fr.MaxValue = maxValue;
+					fr.IsMinExclusive = minExclusive;
+					fr.IsMaxExclusive = maxExclusive;
+				}
+
+				var result = new ProcessResult();
+				result.IndexUsage = new IndexUsage();
+				result.Expression = compiledExpr;
+
+				var minValues = new object[ranges.Length];
+				var maxValues = new object[ranges.Length];
+
+				for (int i = 0; i < ranges.Length; ++i) {
+					minValues[i] = Indexer.Index.InfimumFieldValue;
+					maxValues[i] = Indexer.Index.SupremumFieldValue;
+				}
+
+				bool lastMinExclusive = false;
+				bool lastMaxExclusive = false;
+				bool hasRanged = false;
+				for (int i = 0; i < ranges.Length; ++i) {
+					var fr = ranges[i];
+					if (!hasRanged && fr != null && !object.ReferenceEquals(fr.MinValue, null) &&
+						fr.MinValue.Value != null) {
+						minValues[i] = fr.MinValue.Value;
+						lastMinExclusive = fr.IsMinExclusive;
+					} else {
+						minValues[i] = lastMinExclusive ? 
+							Indexer.Index.SupremumFieldValue : Indexer.Index.InfimumFieldValue;
+					}
+					if (!hasRanged && fr != null && !object.ReferenceEquals(fr.MaxValue, null) &&
+						fr.MaxValue.Value != null) {
+						maxValues[i] = fr.MaxValue.Value;
+						lastMaxExclusive = fr.IsMaxExclusive;
+					} else {
+						maxValues[i] = lastMaxExclusive ? 
+							Indexer.Index.InfimumFieldValue : Indexer.Index.SupremumFieldValue;
+					}
+					if (maxValues[i] == Indexer.Index.InfimumFieldValue || 
+						minValues[i] == Indexer.Index.InfimumFieldValue ||
+						maxValues[i] == Indexer.Index.SupremumFieldValue || 
+						minValues[i] == Indexer.Index.SupremumFieldValue ||
+						fr.MinValue.CompareTo(fr.MaxValue.Value) != 0) {
+						hasRanged = true;
+					} else if (fr.IsMaxExclusive || fr.IsMinExclusive) {
+						return null;
+					}
+
+				}
+
+				index.BaseIndex.EncodeKeyByFieldValues(lastMinExclusive ? long.MaxValue : 0, minValues,
+					startKey, 0);
+				index.BaseIndex.EncodeKeyByFieldValues(lastMaxExclusive ? 0 : long.MaxValue, maxValues,
+					endKey, 0);
+
+				result.IndexUsage.StartKey = startKey;
+				result.IndexUsage.EndKey = endKey;
+				result.IndexUsage.StartInclusive = !lastMinExclusive;
+				result.IndexUsage.EndInclusive = !lastMaxExclusive;
+				result.IndexUsage.Descending = false;
+				result.IndexUsage.Index = index;
+
+				// TODO: take sorting into account
+
+				result.SortKeys = sortKeys;
+
+				return result;
+			};
 		}
 
 		Func<ProcessResult> ProcessWithRowIdIndex(Expression<Func<long, Ston.StonVariant, bool>> expr,
@@ -258,6 +459,7 @@ namespace Yavit.StellaDB.Indexer
 		{
 			var compiledClausesEnumerable =
 				from clause in clauses
+				where clause.Name == null
 				select new {
 					Type = clause.Type,
 					Func = Expression.Lambda<Func<long>>(clause.Right).Compile()
@@ -335,6 +537,7 @@ namespace Yavit.StellaDB.Indexer
 				return result;
 			};
 		}
+	
 	}
 }
 
