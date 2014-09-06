@@ -289,7 +289,9 @@ namespace Yavit.StellaDB.Indexer
 			                  select index;
 			var bestIndex = bestIndices.FirstOrDefault ();
 			if (bestIndex != null) {
-				return ProcessWithIndex (expr, clauses, bestIndex, sortKeys);
+				try {
+					return ProcessWithIndex (expr, clauses, bestIndex, sortKeys);
+				} catch (Ston.StonVariantException) { }
 			}
 
 			// Optimization failure.
