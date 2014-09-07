@@ -594,46 +594,12 @@ namespace Yavit.StellaDB.LowLevel
 					};
 				}
 
-				var comparer = Tree.comparer;
-
-				// Check the first item
-				{
-					var fii = FirstItemIndex;
-					var cur = new Item (this, fii);
-					int ret = comparer.Compare (key, offset, len, Bytes, cur.KeyOffset, cur.ActualKeyLength);
-					if (ret >= 0) {
-						return new FindResult () {
-							PrevIndex = InvalidIndex,
-							NextIndex = fii,
-							ExactMatch = ret == 0
-						};
-					}
-				}
-
 				// Build index map for binary search
                 int numItems;
                 int[] indices = GetItemIndices(out numItems);
 
-				// Check the last item
-				if (numItems > 1) {
-					var cur = new Item (this, indices [numItems - 1]);
-					int ret = comparer.Compare (key, offset, len, Bytes, cur.KeyOffset, cur.ActualKeyLength);
-					if (ret == 0) {
-						return new FindResult () {
-							PrevIndex = indices[numItems - 2],
-							NextIndex = indices[numItems - 1],
-							ExactMatch = true
-						};
-					} else if (ret < 0) {
-						return new FindResult () {
-							PrevIndex = indices[numItems - 1],
-							NextIndex = InvalidIndex,
-							ExactMatch = false
-						};
-					}
-				}
-
 				int start = 0, end = numItems;
+				var comparer = Tree.comparer;
 
 				while (end > start) {
 					int mid = (start + end) >> 1;
