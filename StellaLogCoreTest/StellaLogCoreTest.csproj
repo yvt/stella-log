@@ -49,6 +49,8 @@
   <ItemGroup>
     <Compile Include="LogBookTest.cs" />
     <Compile Include="TemporaryFile.cs" />
+    <Compile Include="TemporaryLogBook.cs" />
+    <Compile Include="LocalConfigTest.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

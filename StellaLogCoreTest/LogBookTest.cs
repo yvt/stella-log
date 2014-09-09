@@ -9,9 +9,16 @@ namespace Yavit.StellaLog.Core.Test
 		[Test ()]
 		public void Create ()
 		{
-			using (var tmp1 = new TemporaryFile())
-			using (var tmp2 = new TemporaryFile(tmp1.FileName + ".journallog")){
-				new LogBook (tmp1.FileName);
+			using (var tmp = new TemporaryLogBook()){
+				tmp.Open ().Dispose();
+			}
+		}
+		[Test ()]
+		public void OpenTwice ()
+		{
+			using (var tmp = new TemporaryLogBook()){
+				tmp.Open ().Dispose();
+				tmp.Open ().Dispose();
 			}
 		}
 	}

@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Yavit.StellaLog.Core.Test
 {
-	public class TemporaryFile: IDisposable
+	sealed class TemporaryFile: IDisposable
 	{
 		private string fileName;
 		public TemporaryFile (): this(Path.GetTempFileName())
