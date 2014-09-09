@@ -8,6 +8,113 @@ using Yavit.StellaLog.Core.Utils;
 
 namespace Yavit.StellaLog.Core
 {
+	public sealed class CheckoutEventArgs: EventArgs
+	{
+		internal readonly byte[] oldRevisionId;
+		internal readonly byte[] newRevisionId;
+
+		public CheckoutEventArgs(byte[] oldRevisionId, byte[] newRevisionId)
+		{
+			this.newRevisionId = (byte[])newRevisionId.Clone();
+			this.oldRevisionId = (byte[])oldRevisionId.Clone();
+		}
+
+		public byte[] GetOldRevisionId()
+		{
+			return (byte[])oldRevisionId.Clone();
+		}
+		public byte[] GetNewRevisionId()
+		{
+			return (byte[])newRevisionId.Clone();
+		}
+	}
+
+	public sealed class MergingEventArgs: EventArgs
+	{
+		internal readonly byte[] currentRevisionId;
+		internal readonly byte[] sourceRevisionId;
+
+		public MergingEventArgs(byte[] currentRevisionId, byte[] sourceRevisionId)
+		{
+			this.currentRevisionId = (byte[])currentRevisionId.Clone();
+			this.sourceRevisionId = (byte[])sourceRevisionId.Clone();
+		}
+
+		public byte[] GetcurrentRevisionId()
+		{
+			return (byte[])currentRevisionId.Clone();
+		}
+		public byte[] GetSourceRevisionId()
+		{
+			return (byte[])sourceRevisionId.Clone();
+		}
+	}
+
+	public sealed class MergedEventArgs: EventArgs
+	{
+		internal readonly byte[] oldRevisionId;
+		internal readonly byte[] newRevisionId;
+		internal readonly byte[] sourceRevisionId;
+		readonly VersionController.MergeResult result;
+
+		public MergedEventArgs(byte[] oldRevisionId, byte[] newRevisionId, byte[] sourceRevisionId, VersionController.MergeResult result)
+		{
+			this.sourceRevisionId = (byte[])sourceRevisionId.Clone();
+			this.result = result;
+			this.newRevisionId = (byte[])newRevisionId.Clone();
+			this.oldRevisionId = (byte[])oldRevisionId.Clone();
+		}
+
+		public byte[] GetOldRevisionId()
+		{
+			return (byte[])oldRevisionId.Clone();
+		}
+		/// <summary>
+		/// Gets the revision identifier which was resulted in by merge operation.
+		/// When <c>Result</c> is <c>MergeResult.MergeUnresolved</c>, this is null because
+		/// the merge operation is incomplete yet.
+		/// </summary>
+		/// <returns>The new revision identifier.</returns>
+		public byte[] GetNewRevisionId()
+		{
+			return (byte[])newRevisionId.Clone();
+		}
+
+		public byte[] GetSourceRevisionId()
+		{
+			return (byte[])sourceRevisionId.Clone();
+		}
+
+		public VersionController.MergeResult Result
+		{
+			get { return result; }
+		}
+	}
+
+	public sealed class CommitEventArgs: EventArgs
+	{
+		internal readonly byte[] currentRevisionId;
+		internal readonly byte[] newRevisionId;
+
+		public CommitEventArgs(byte[] currentRevisionId, byte[] newRevisionId)
+		{
+			this.currentRevisionId = (byte[])currentRevisionId.Clone();
+			this.newRevisionId = (byte[])newRevisionId.Clone();
+		}
+
+		public byte[] GetcurrentRevisionId()
+		{
+			return (byte[])currentRevisionId.Clone();
+		}
+		public byte[] GetNewRevisionId()
+		{
+			return (byte[])newRevisionId.Clone();
+		}
+	}
+
+	public sealed class RevertEventArgs: EventArgs
+	{ }
+
 	public sealed class VersionController
 	{
 		public const int RevisionIdLength = 24;
@@ -31,6 +138,18 @@ namespace Yavit.StellaLog.Core
 		readonly StellaDB.Table.PreparedQuery mergeTableEnumerateQuery;
 		readonly Func<byte[], long, StellaDB.Table.PreparedQuery> mergeTableLookupQuery;
 		readonly Func<byte[], StellaDB.Table.PreparedQuery> mergeTableFindByTableQuery;
+
+		public event EventHandler<CheckoutEventArgs> Checkouting;
+		public event EventHandler<CheckoutEventArgs> Checkouted;
+
+		public event EventHandler<MergingEventArgs> Merging;
+		public event EventHandler<MergedEventArgs> Merged;
+
+		public event EventHandler<CommitEventArgs> Commiting;
+		public event EventHandler<CommitEventArgs> Committed;
+
+		public event EventHandler<RevertEventArgs> Reverting;
+		public event EventHandler<RevertEventArgs> Reverted;
 
 		[Serializable]
 		struct DbBranch
@@ -203,6 +322,56 @@ namespace Yavit.StellaLog.Core
 			}
 		}
 
+		protected void OnCheckouting(CheckoutEventArgs e)
+		{
+			if (Checkouting != null)
+				Checkouting (this, e);
+		}
+
+		protected void OnCheckouted(CheckoutEventArgs e)
+		{
+			if (Checkouted != null)
+				Checkouted (this, e);
+		}
+
+		protected void OnMerging(MergingEventArgs e)
+		{
+			if (Merging != null)
+				Merging (this, e);
+		}
+
+		protected void OnMerged(MergedEventArgs e)
+		{
+			if (Merged != null)
+				Merged (this, e);
+		}
+
+		protected void OnCommiting(CommitEventArgs e)
+		{
+			if (Commiting != null)
+				Commiting (this, e);
+		}
+
+		protected void OnCommitted(CommitEventArgs e)
+		{
+			if (Committed != null)
+				Committed (this, e);
+		}
+
+		protected void OnReverting(RevertEventArgs e)
+		{
+			if (Reverting != null)
+				Reverting (this, e);
+		}
+
+		protected void OnReverted(RevertEventArgs e)
+		{
+			if (Reverted != null)
+				Reverted (this, e);
+		}
+
+
+
 		#region Raw Branch/Revision
 
 		sealed class Revision
@@ -365,15 +534,20 @@ namespace Yavit.StellaLog.Core
 				return;
 			}
 
+			var e = new CheckoutEventArgs (CurrentRevisionRaw, goal.DbBranch.Revision);
+			OnCheckouting (e);
+
 			// First switch to the detached branch.
 			CurrentBranchRaw = DetachedBranchId;
 			CurrentRevisionRaw = originalBranchId;
 
 			// Check out the target revision.
-			SetCurrentRevision (goal.DbBranch.Revision);
+			SetCurrentRevisionImpl (goal.DbBranch.Revision);
 
 			// Switch to the target branch.
 			CurrentBranchRaw = goal.DbBranch.Name;
+
+			OnCheckouted (e);
 		}
 
 		sealed class CommitTreePath
@@ -392,7 +566,15 @@ namespace Yavit.StellaLog.Core
 			CheckNoLocalModifications ();
 			CheckNoIncompleteMerge ();
 
+			// Ensure revision exists
+			LookupRevision (revision);
+
+			var e = new CheckoutEventArgs (CurrentRevisionRaw, revision);
+			OnCheckouting (e);
+
 			SetCurrentRevisionImpl (revision);
+
+			OnCheckouted (e);
 		}
 		void SetCurrentRevisionImpl(byte[] revision)
 		{
@@ -625,9 +807,17 @@ namespace Yavit.StellaLog.Core
 
 			// Switch to the detached branch
 			var originalRevisionId = CurrentRevisionRaw;
+
+			// Make sure revision exists
+			LookupRevision (revision);
+			var e = new CheckoutEventArgs (originalRevisionId, revision);
+			OnCheckouting (e);
+
 			CurrentBranchRaw = DetachedBranchId;
 
-			SetCurrentRevision (revision);
+			SetCurrentRevisionImpl (revision);
+
+			OnCheckouted (e);
 		}
 
 		#endregion
@@ -693,11 +883,16 @@ namespace Yavit.StellaLog.Core
 			var path2 = path.Item2;
 			var commonAncestor = path1.Last ();
 
+			OnMerging (new MergingEventArgs (currentRevision, mergedRevision));
+
 			if (commonAncestor == path2[0]) {
+				OnMerged (new MergedEventArgs (currentRevision, currentRevision, mergedRevision, MergeResult.AlreadyUpToDate));
 				return MergeResult.AlreadyUpToDate;
 			} else if (commonAncestor == path1[0]) {
 				// Fast forward.
 				CurrentRevisionRaw = mergedRevision;
+
+				OnMerged (new MergedEventArgs (currentRevision, mergedRevision, mergedRevision, MergeResult.MergedByFastForward));
 				return MergeResult.MergedByFastForward;
 			}
 
@@ -707,7 +902,7 @@ namespace Yavit.StellaLog.Core
 				CurrentMergeTargetRevisionId = currentRevision;
 				CurrentMergedRevisionId = mergedRevision;
 
-				SetCurrentRevision (commonAncestor.DbRevision.Id);
+				SetCurrentRevisionImpl (commonAncestor.DbRevision.Id);
 
 				// Check deltas
 				{
@@ -771,12 +966,15 @@ namespace Yavit.StellaLog.Core
 
 					CommitLocalModifications (GenerateMergeMessage (currentRevision, mergedRevision));
 					t.Commit ();
+
+					OnMerged (new MergedEventArgs (currentRevision, CurrentRevisionRaw, mergedRevision, MergeResult.MergedByAutoMerge));
 					return MergeResult.MergedByAutoMerge;
 				}
 
 				// Automerge failed.
 
 				t.Commit ();
+				OnMerged (new MergedEventArgs (currentRevision, null, mergedRevision, MergeResult.MergeUnresolved));
 				return MergeResult.MergeUnresolved;
 			}
 		}
@@ -881,11 +1079,13 @@ namespace Yavit.StellaLog.Core
 
 			using (var t = book.BeginTransaction()) {
 				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
-					var delta = deltaRow.ToObject<DbDelta> ();
-					var table = GetTableImpl (delta.Table);
-					var tableRow = table.FetchRaw (delta.RowId);
-					var original = tableRow ?? new byte[] { };
-					var updated = deltaEncoder.DecodeY (delta.Delta, original);
+					DbDelta delta = deltaRow.ToObject<DbDelta> ();
+					VersionControlledTableImpl vctable = GetTableImpl (delta.Table);
+					StellaDB.Table table = vctable.BaseTable;
+					byte[] tableRow = table.FetchRaw (delta.RowId);
+					byte[] original = tableRow ?? new byte[] { };
+					byte[] updated = deltaEncoder.DecodeY (delta.Delta, original);
+					vctable.RowBeingUpdatedByVersionControl (delta.RowId, original, updated);
 					if (updated.Length == 0) {
 						table.Delete (delta.RowId);
 					} else {
@@ -916,11 +1116,13 @@ namespace Yavit.StellaLog.Core
 
 			using (var t = book.BeginTransaction ()) {
 				foreach (var deltaRow in deltaTable.Query(deltaTableFindByRevisionQuery(r.DbRevision.Id))) {
-					var delta = deltaRow.ToObject<DbDelta> ();
-					var table = GetTableImpl (delta.Table);
-					var tableRow = table.FetchRaw (delta.RowId);
-					var original = tableRow ?? new byte[] { };
-					var updated = deltaEncoder.DecodeX (delta.Delta, original);
+					DbDelta delta = deltaRow.ToObject<DbDelta> ();
+					VersionControlledTableImpl vctable = GetTableImpl (delta.Table);
+					StellaDB.Table table = vctable.BaseTable;
+					byte[] tableRow = table.FetchRaw (delta.RowId);
+					byte[] original = tableRow ?? new byte[] { };
+					byte[] updated = deltaEncoder.DecodeX (delta.Delta, original);
+					vctable.RowBeingUpdatedByVersionControl (delta.RowId, original, updated);
 					if (updated.Length == 0) {
 						table.Delete (delta.RowId);
 					} else {
@@ -949,7 +1151,7 @@ namespace Yavit.StellaLog.Core
 							RowId = delta.RowId
 						};
 
-						var table = GetTableImpl (delta.Table);
+						var table = GetTableImpl (delta.Table).BaseTable;
 						var tableRow = table.FetchRaw (delta.RowId);
 						item.Original = tableRow ?? new byte[] { };
 					} else {
@@ -1044,11 +1246,18 @@ namespace Yavit.StellaLog.Core
 			readonly byte[] tableNameBytes;
 
 			public VersionControlledTableImpl(VersionController vc, string tableName, StellaDB.Table table):
-			base(table)
+			base(table, tableName)
 			{
 				this.vc = vc;
 				tableNameBytes = utf8.GetBytes(tableName);
 			}
+
+			public void RowBeingUpdatedByVersionControl(long rowId, byte[] oldData, byte[] newData)
+			{
+				OnUpdate (new VersionControlledTableUpdatedEventArgs (rowId, oldData, newData,
+					VersionControlledTableUpdateReason.VersionController));
+			}
+
 			protected override void RowBeingUpdated (long rowId, byte[] oldData, byte[] newData)
 			{
 				foreach (var deltaRow in vc.deltaTable.Query(vc.deltaTableLookupQuery(LocalModificationRevisionId, tableNameBytes, rowId))) {
@@ -1087,8 +1296,11 @@ namespace Yavit.StellaLog.Core
 			if (!HasLocalModifications()) {
 				throw new InvalidOperationException ("There are no local modifications.");
 			}
+			var revisionId = GenerateRevisionId ();
+			var e = new CommitEventArgs (CurrentRevisionRaw, revisionId);
+			OnCommiting (e);
+
 			using (var t = book.BeginTransaction()) {
-				var revisionId = GenerateRevisionId ();
 
 				var rev = new DbRevision () {
 					Id = revisionId,
@@ -1123,18 +1335,23 @@ namespace Yavit.StellaLog.Core
 
 				CurrentRevisionRaw = revisionId;
 			}
+
+			OnCommitted (e);
 		}
 
 		public void RevertLocalModifications()
 		{
+			OnReverting (new RevertEventArgs ());
 			using (var t = book.BeginTransaction()) {
 				var rowIds = new List<long> ();
 				foreach (var deltaRow in deltaTable.Query (deltaTableFindByRevisionQuery (LocalModificationRevisionId))) {
-					var delta = deltaRow.ToObject<DbDelta> ();
-					var table = GetTableImpl (delta.Table);
-					var tableRow = table.FetchRaw (delta.RowId);
-					var original = tableRow ?? new byte[] { };
-					var updated = deltaEncoder.DecodeX (delta.Delta, original);
+					DbDelta delta = deltaRow.ToObject<DbDelta> ();
+					VersionControlledTableImpl vctable = GetTableImpl (delta.Table);
+					StellaDB.Table table = vctable.BaseTable;
+					byte[] tableRow = table.FetchRaw (delta.RowId);
+					byte[] original = tableRow ?? new byte[] { };
+					byte[] updated = deltaEncoder.DecodeX (delta.Delta, original);
+					vctable.RowBeingUpdatedByVersionControl (delta.RowId, original, updated);
 					if (updated.Length == 0) {
 						table.Delete (delta.RowId);
 					} else {
@@ -1144,7 +1361,16 @@ namespace Yavit.StellaLog.Core
 				}
 				foreach (var row in rowIds)
 					deltaTable.Delete (row);
+
+				// Cancel merge
+				rowIds.Clear ();
+				foreach (var r in mergeTable.Query(mergeTableEnumerateQuery)) {
+					rowIds.Add (r.RowId);
+				}
+				foreach (var row in rowIds)
+					mergeTable.Delete (row);
 			}
+			OnReverted (new RevertEventArgs ());
 		}
 
 		public bool HasLocalModifications()
@@ -1196,13 +1422,60 @@ namespace Yavit.StellaLog.Core
 		#endregion
 	}
 
+	internal enum VersionControlledTableUpdateReason
+	{
+		VersionController,
+		TableUpdate
+	}
+
+	internal sealed class VersionControlledTableUpdatedEventArgs: EventArgs
+	{
+		internal byte[] oldValue, newValue;
+		readonly long rowId;
+		readonly VersionControlledTableUpdateReason reason;
+
+		internal VersionControlledTableUpdatedEventArgs(long rowId, byte[] oldValue, byte[] newValue,
+			VersionControlledTableUpdateReason reason)
+		{
+			this.rowId = rowId;
+			this.oldValue = oldValue;
+			this.newValue = newValue;
+			this.reason = reason;
+		}
+
+		public long RowId
+		{
+			get { return rowId; }
+		}
+
+		public VersionControlledTableUpdateReason Reason
+		{ 
+			get { return reason; }
+		}
+	}
+
 	internal abstract class VersionControlledTable
 	{
 		readonly StellaDB.Table baseTable;
+		readonly string name;
 
-		protected VersionControlledTable(StellaDB.Table baseTable)
+		public event EventHandler<VersionControlledTableUpdatedEventArgs> Updated;
+
+		protected VersionControlledTable(StellaDB.Table baseTable, string name)
 		{
 			this.baseTable = baseTable;
+			this.name = name;
+		}
+
+		protected void OnUpdate(VersionControlledTableUpdatedEventArgs e)
+		{
+			if (Updated != null)
+				Updated (this, e);
+		}
+
+		public string Name
+		{
+			get { return name; }
 		}
 
 		public StellaDB.Table BaseTable
@@ -1211,6 +1484,15 @@ namespace Yavit.StellaLog.Core
 		}
 
 		protected abstract void RowBeingUpdated (long rowId, byte[] oldData, byte[] newData);
+
+		void RowBeingUpdatedWrapper (long rowId, byte[] oldData, byte[] newData)
+		{
+			OnUpdate (new VersionControlledTableUpdatedEventArgs (rowId,
+				oldData, newData, VersionControlledTableUpdateReason.TableUpdate));
+			RowBeingUpdated (rowId, oldData, newData);
+		}
+
+
 
 		public void UpdateRaw (long rowId, byte[] data)
 		{
@@ -1222,13 +1504,13 @@ namespace Yavit.StellaLog.Core
 			var cmp = StellaDB.DefaultKeyComparer.Instance;
 			var oldData = FetchRaw (rowId);
 			if (oldData == null) {
-				RowBeingUpdated (rowId, new byte[] {}, data);
+				RowBeingUpdatedWrapper (rowId, new byte[] {}, data);
 				baseTable.InsertRaw (rowId, data, false);
 			} else {
 				if (cmp.Equals (oldData, data)) {
 					return;
 				}
-				RowBeingUpdated (rowId, oldData, data);
+				RowBeingUpdatedWrapper (rowId, oldData, data);
 				baseTable.UpdateRaw (rowId, data);
 			}
 		}
@@ -1243,7 +1525,7 @@ namespace Yavit.StellaLog.Core
 			if (oldData == null) {
 				return;
 			}
-			RowBeingUpdated (rowId, oldData, new byte[] {});
+			RowBeingUpdatedWrapper (rowId, oldData, new byte[] {});
 			baseTable.Delete (rowId);
 		}
 
@@ -1251,7 +1533,7 @@ namespace Yavit.StellaLog.Core
 		{
 			var rowId = baseTable.InsertRaw (data, false);
 			try {
-				RowBeingUpdated (rowId, new byte[] { }, data);
+				RowBeingUpdatedWrapper (rowId, new byte[] { }, data);
 			} catch {
 				baseTable.Delete (rowId);
 				throw;
