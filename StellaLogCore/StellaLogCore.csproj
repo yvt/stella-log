@@ -42,6 +42,7 @@
     <Compile Include="NestedTransaction.cs" />
     <Compile Include="Utils\PriorityQueue.cs" />
     <Compile Include="Utils\ArrayUtils.cs" />
+    <Compile Include="ConfigManager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
