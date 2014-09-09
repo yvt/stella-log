@@ -101,7 +101,7 @@ namespace Yavit.StellaDB.Ston
 					return Exprs.Expression.IfThen(
 						Exprs.Expression.Call(param, dicTryGetValue, nameExpr, tmpObj),
 						assignExpr);
-				})).Concat(new [] { returnedObj });
+				})).Concat(new [] {  Exprs.Expression.Convert(returnedObj, typeof(object)) });
 
 				var expr = Exprs.Expression.Block (new[] {
 					tmpObj, returnedObj
