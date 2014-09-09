@@ -30,6 +30,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -46,6 +48,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.Not.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -62,6 +66,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					var nextRevision = book.VersionController.GetCurrentRevision ();
 
@@ -74,6 +80,8 @@ namespace Yavit.StellaLog.Core.Test
 						Is.Not.EqualTo (nextRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
 					Assert.That (book.Config ["Test2"], Is.EqualTo ("Piyo"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -90,6 +98,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					var nextRevision = book.VersionController.GetCurrentRevision ();
 
@@ -101,6 +111,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (nextRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Piyo"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -118,6 +130,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					var nextRevision = book.VersionController.GetCurrentRevision ();
 
@@ -130,6 +144,8 @@ namespace Yavit.StellaLog.Core.Test
 						Is.EqualTo (nextRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
 					Assert.That (book.Config ["Test2"], Is.Not.EqualTo ("Piyo"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -146,6 +162,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					var nextRevision = book.VersionController.GetCurrentRevision ();
 
@@ -157,6 +175,8 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.EqualTo (nextRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -184,12 +204,16 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					book.VersionController.CheckoutRevision (initialRevision);
 
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.Not.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
@@ -206,12 +230,16 @@ namespace Yavit.StellaLog.Core.Test
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.Not.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 
 					book.VersionController.SetCurrentRevision (initialRevision);
 
 					Assert.That (book.VersionController.GetCurrentRevision (),
 						Is.EqualTo (initialRevision));
 					Assert.That (book.Config ["Test"], Is.Not.EqualTo ("Hoge"));
+					Assert.IsFalse (book.VersionController.HasLocalModifications());
+					Assert.IsFalse (book.VersionController.HasUnresolvedMerge);
 				}
 			}
 		}
