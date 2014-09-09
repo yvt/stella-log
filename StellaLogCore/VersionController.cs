@@ -152,14 +152,14 @@ namespace Yavit.StellaLog.Core
 		public event EventHandler<RevertEventArgs> Reverted;
 
 		[Serializable]
-		struct DbBranch
+		sealed class DbBranch
 		{
 			public byte[] Name;
 			public byte[] Revision;
 		}
 
 		[Serializable]
-		struct DbRevision
+		sealed class DbRevision
 		{
 			public byte[] Id;
 
@@ -185,7 +185,7 @@ namespace Yavit.StellaLog.Core
 		}
 
 		[Serializable]
-		struct DbDelta
+		sealed class DbDelta
 		{
 			public byte[] Revision;
 			public byte[] Table;
@@ -194,7 +194,7 @@ namespace Yavit.StellaLog.Core
 		}
 
 		[Serializable]
-		struct DbMergeItem
+		sealed class DbMergeItem
 		{
 			public byte[] Table;
 			public long RowId;
