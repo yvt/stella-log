@@ -253,7 +253,13 @@ namespace Yavit.StellaDB
 				unsorted = Enumerable.Empty<ResultRow> ();
 			}
 
-			unsorted = unsorted.Where (row => plan.Expression (row.RowId, row.ToVariant ()));
+			unsorted = unsorted.Where (row => { 
+				try {
+					return plan.Expression (row.RowId, row.ToVariant ());
+				} catch (Ston.StonVariantException) {
+					return false;
+				}
+			});
 
 			// TODO: sort
 			return unsorted;
