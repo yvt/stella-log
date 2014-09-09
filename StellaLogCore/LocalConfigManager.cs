@@ -39,7 +39,7 @@ namespace Yavit.StellaLog.Core
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Key", 32)
 			});
 
-			query = table.Prepare ((rowId, entry) => entry ["key"] == queryKey);
+			query = table.Prepare ((rowId, entry) => entry ["Key"] == queryKey);
 		}
 
 		public object this [string key]
@@ -63,32 +63,37 @@ namespace Yavit.StellaLog.Core
 				return null;
 			}
 			set {
-				queryKey = utf8.GetBytes (key);
-				var obj = new DbEntry () {
-					Key = queryKey,
-					Value = value
-				};
+				using (var t = book.BeginTransaction()) {
+					queryKey = utf8.GetBytes (key);
+					var obj = new DbEntry () {
+						Key = queryKey,
+						Value = value
+					};
 
-				Entry entry;
-				if (entries.TryGetValue(key, out entry)) {
-					entry.Value = value;
-					table.Update (entry.RowId, obj);
-				} else {
-					foreach (var result in table.Query(query)) {
+					Entry entry;
+					if (entries.TryGetValue(key, out entry)) {
+						entry.Value = value;
+						table.Update (entry.RowId, obj);
+						t.Commit ();
+					} else {
+						foreach (var result in table.Query(query)) {
+							entry = new Entry () {
+								RowId = result.RowId,
+								Value = value
+							};
+							entries.Add (key, entry);
+							table.Update (entry.RowId, obj);
+							t.Commit ();
+							return;
+						}
+
 						entry = new Entry () {
-							RowId = result.RowId,
+							RowId = table.Insert(obj, false),
 							Value = value
 						};
 						entries.Add (key, entry);
-						table.Update (entry.RowId, obj);
-						return;
+						t.Commit ();
 					}
-
-					entry = new Entry () {
-						RowId = table.Insert(obj, false),
-						Value = value
-					};
-					entries.Add (key, entry);
 				}
 			}
 		}
