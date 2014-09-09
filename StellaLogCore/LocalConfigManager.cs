@@ -17,11 +17,13 @@ namespace Yavit.StellaLog.Core
 
 		static readonly Encoding utf8 = new UTF8Encoding();
 
+		[Serializable]
 		sealed class DbEntry
 		{
 			public byte[] Key;
 			public object Value;
 		}
+
 		sealed class Entry
 		{
 			public long RowId;
@@ -44,7 +46,7 @@ namespace Yavit.StellaLog.Core
 		{
 			get {
 				Entry entry;
-				if (!entries.TryGetValue(key, out entry)) {
+				if (entries.TryGetValue(key, out entry)) {
 					return entry.Value;
 				}
 
