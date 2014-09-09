@@ -272,6 +272,11 @@ namespace Yavit.StellaDB.Ston
 						}
 					}
 
+					if (dic == null) {
+						throw new InvalidOperationException(string.Format(
+							"Failed to serialize a value of the type {0}.", obj.GetType().FullName));
+					}
+
 					writer.StartDictionary ();
 					foreach (var e in dic) {
 						SerializeImpl (e.Key, writer, level + 1);
