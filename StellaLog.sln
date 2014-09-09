@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitDelta", "BitDelta\BitDel
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitDeltaTest", "BitDeltaTest\BitDeltaTest.csproj", "{73ECA76D-B200-4591-B20C-253DEDA8518B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StellaLogCoreTest", "StellaLogCoreTest\StellaLogCoreTest.csproj", "{AF3EAAA0-B97F-4D1C-A3AD-EA1C82EE8331}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -35,6 +37,10 @@ Global
 		{80B5C70A-8B56-405E-874E-2862F71AD833}.Debug|x86.Build.0 = Debug|Any CPU
 		{80B5C70A-8B56-405E-874E-2862F71AD833}.Release|x86.ActiveCfg = Release|Any CPU
 		{80B5C70A-8B56-405E-874E-2862F71AD833}.Release|x86.Build.0 = Release|Any CPU
+		{AF3EAAA0-B97F-4D1C-A3AD-EA1C82EE8331}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AF3EAAA0-B97F-4D1C-A3AD-EA1C82EE8331}.Debug|x86.Build.0 = Debug|Any CPU
+		{AF3EAAA0-B97F-4D1C-A3AD-EA1C82EE8331}.Release|x86.ActiveCfg = Release|Any CPU
+		{AF3EAAA0-B97F-4D1C-A3AD-EA1C82EE8331}.Release|x86.Build.0 = Release|Any CPU
 		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Debug|x86.Build.0 = Debug|Any CPU
 		{BF7DF2C4-4859-4B07-A0C4-F7D32818C8B8}.Release|x86.ActiveCfg = Release|Any CPU
