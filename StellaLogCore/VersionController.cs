@@ -391,6 +391,7 @@ namespace Yavit.StellaLog.Core
 			{
 				using (var t = vc.book.BeginTransaction ()) {
 					vc.revisionTable.Update (rowId, DbRevision);
+					t.Commit ();
 				}
 			}
 		}
@@ -412,6 +413,7 @@ namespace Yavit.StellaLog.Core
 			{
 				using (var t = vc.book.BeginTransaction ()) {
 					vc.branchTable.Update (rowId, DbBranch);
+					t.Commit ();
 				}
 			}
 		}
@@ -681,7 +683,7 @@ namespace Yavit.StellaLog.Core
 			var ret = new CommitTreePath ();
 
 			// First, move the current revision to the common ancestor.
-			ret.CommonAncestorToGoal = currentAncestors.Take (currentAncestors.Count - 1);
+			ret.CurrentToCommonAncestor = currentAncestors.Take (currentAncestors.Count - 1);
 
 			// And then move the current revision to the goal revision.
 			ret.CommonAncestorToGoal = goalAncestors.Take (goalAncestors.Count - 1).Reverse ();
@@ -814,6 +816,7 @@ namespace Yavit.StellaLog.Core
 			OnCheckouting (e);
 
 			CurrentBranchRaw = DetachedBranchId;
+			CurrentRevisionRaw = originalRevisionId;
 
 			SetCurrentRevisionImpl (revision);
 
@@ -1334,6 +1337,8 @@ namespace Yavit.StellaLog.Core
 				}
 
 				CurrentRevisionRaw = revisionId;
+
+				t.Commit ();
 			}
 
 			OnCommitted (e);
@@ -1369,6 +1374,7 @@ namespace Yavit.StellaLog.Core
 				}
 				foreach (var row in rowIds)
 					mergeTable.Delete (row);
+				t.Commit ();
 			}
 			OnReverted (new RevertEventArgs ());
 		}
