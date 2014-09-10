@@ -474,6 +474,14 @@ namespace Yavit.StellaDB.Ston
 			ValueWritten ();
 		}
 
+		public void Write(DateTime d)
+		{
+			bw.Write (DataTypes.DateTime);
+			var span = d - DataTypes.Epoch;
+			bw.Write ((long)span.TotalMilliseconds);
+			ValueWritten ();
+		}
+
 		public void StartList()
 		{
 			CheckStateForNonStringValue ("a list");

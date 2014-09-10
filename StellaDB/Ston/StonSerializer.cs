@@ -144,6 +144,8 @@ namespace Yavit.StellaDB.Ston
 				return reader.ReadBoolean ();
 			case StonReader.NodeType.Char:
 				return reader.ReadChar ();
+			case StonReader.NodeType.DateTime:
+				return reader.ReadDateTime ();
 			case StonReader.NodeType.String:
 				return reader.ReadString ().ToString ();
 			case StonReader.NodeType.ByteArray:
@@ -224,7 +226,8 @@ namespace Yavit.StellaDB.Ston
 						string.Format("Unserializable value {0} which is Decimal.",
 							obj));
 				case TypeCode.DateTime:
-					throw new NotImplementedException ("Serializing DateTime is not implemented yet.");
+					writer.Write (Convert.ToDateTime (obj));
+					break;
 				case TypeCode.Object:
 					var bytes = obj as byte[];
 					if (bytes != null) {

@@ -24,7 +24,11 @@ namespace Yavit.StellaDB.Test
 				ret = ser.Deserialize (bytes, type);
 			}
 
-			Assert.That (ret, Is.EqualTo (b));
+			if (b is DateTime) {
+				Assert.That (((DateTime)ret - (DateTime)b).TotalMilliseconds, Is.LessThan(1));
+			} else {
+				Assert.That (ret, Is.EqualTo (b));
+			}
 		}
 		void RoundTrip(object b, Type type = null)
 		{
@@ -42,6 +46,8 @@ namespace Yavit.StellaDB.Test
 			s += s; s += s; s += s; s += s; s += s;
 			RoundTrip(s);
 		}
+
+		[Test ()] public void DateTimeTest ()				{ RoundTrip (DateTime.UtcNow); }
 
 		[Test ()] public void ByteArray1 ()			{ RoundTrip (new byte[] {}); }
 		[Test ()] public void ByteArray2 ()			{ RoundTrip (new byte[] {114, 51, 4}); }

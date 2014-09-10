@@ -20,7 +20,8 @@ namespace Yavit.StellaDB.Ston
 			Boolean,
 			Char,
 			String,
-			ByteArray
+			ByteArray,
+			DateTime
 		}
 		readonly Utils.MemoryBinaryReader reader;
 
@@ -150,7 +151,7 @@ namespace Yavit.StellaDB.Ston
 				case DataTypes.Double:
 					return NodeType.Double;
 				case DataTypes.DateTime:
-					throw new NotImplementedException ("Deserializing DateTime is not supported yet.");
+					return NodeType.DateTime;
 				case DataTypes.EmptyString:
 				case DataTypes.String8:
 				case DataTypes.String16:
@@ -335,6 +336,19 @@ namespace Yavit.StellaDB.Ston
 			return r;
 		}
 
+		public DateTime ReadDateTime()
+		{
+			CheckNotEndOfDocument ();
+			var type = DataType;
+			if (type != DataTypes.DateTime) {
+				ThrowInvalidDataType ();
+			}
+			reader.ReadUInt8 ();
+			var r = reader.ReadInt64 ();
+			ValueRead ();
+			return DataTypes.Epoch + TimeSpan.FromMilliseconds ((double)r);
+		}
+
 		public char ReadChar()
 		{
 			CheckNotEndOfDocument ();
@@ -489,6 +503,7 @@ namespace Yavit.StellaDB.Ston
 		/// </summary>
 		public void Skip()
 		{
+			// TODO: this can be made faster
 			var type = DataType;
 			if (type == DataTypes.EOMLMarker) {
 				throw new InvalidOperationException ("Cannot perform skip on the end of map/list marker.");
@@ -516,6 +531,9 @@ namespace Yavit.StellaDB.Ston
 					throw new InvalidOperationException ();
 				case NodeType.Null:
 					ReadNull ();
+					return;
+				case NodeType.DateTime:
+					ReadDateTime ();
 					return;
 				case NodeType.Integer:
 					ReadInteger ();

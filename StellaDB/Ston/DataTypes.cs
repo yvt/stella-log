@@ -44,6 +44,8 @@ namespace Yavit.StellaDB.Ston
 		public const byte ByteArray32 = 0x2a;
 		public const byte EmptyByteArray = 0x2b;
 		public const byte IntegerBase = 0x80; // above this are 7-bit signed integers
+
+		public static readonly DateTime Epoch = new DateTime(1970, 1, 1);
 	}
 }
 
