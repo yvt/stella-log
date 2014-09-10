@@ -144,6 +144,24 @@ namespace Yavit.StellaLog.Core
 			}
 		}
 
+		public DateTime Time
+		{
+			get { return (DateTime)this[manager.timeAttributeIndex]; }
+			set { this [manager.timeAttributeIndex] = value; }
+		}
+
+		public string Call
+		{
+			get { return (string)this[manager.callAttributeIndex]; }
+			set { this [manager.callAttributeIndex] = value; }
+		}
+
+		public string Notes
+		{
+			get { return (string)this[manager.notesAttributeIndex]; }
+			set { this [manager.notesAttributeIndex] = value; }
+		}
+
 		#region IDictionary
 		void IDictionary<string, object>.Add (string key, object value)
 		{

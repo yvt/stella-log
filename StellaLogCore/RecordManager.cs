@@ -18,6 +18,10 @@ namespace Yavit.StellaLog.Core
 
 		internal long? currentUpdatingRecordId = null;
 
+		internal readonly int timeAttributeIndex;
+		internal readonly int callAttributeIndex;
+		internal readonly int notesAttributeIndex;
+
 		public RecordManager (LogBook book)
 		{
 			this.book = book;
@@ -40,6 +44,11 @@ namespace Yavit.StellaLog.Core
 					}
 				}
 			};
+
+			timeAttributeIndex = EnsureAttributeIndex ("Time");
+			callAttributeIndex = EnsureAttributeIndex ("Call");
+			notesAttributeIndex = EnsureAttributeIndex ("Notes");
+
 		}
 
 		public int AttributeCount
