@@ -43,6 +43,8 @@
     <Compile Include="Utils\PriorityQueue.cs" />
     <Compile Include="Utils\ArrayUtils.cs" />
     <Compile Include="ConfigManager.cs" />
+    <Compile Include="RecordManager.cs" />
+    <Compile Include="Utils\WeakValueDictionary.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

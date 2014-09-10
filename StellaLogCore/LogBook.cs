@@ -10,6 +10,7 @@ namespace Yavit.StellaLog.Core
 		public readonly LocalConfigManager LocalConfig;
 		public readonly VersionController VersionController;
 		public readonly ConfigManager Config;
+		public readonly RecordManager Records;
 
 		public LogBook (string path)
 		{
@@ -21,6 +22,8 @@ namespace Yavit.StellaLog.Core
 				VersionController = new VersionController (this);
 
 				Config = new ConfigManager (this);
+
+				Records = new RecordManager (this);
 
 				t.Commit ();
 			}
