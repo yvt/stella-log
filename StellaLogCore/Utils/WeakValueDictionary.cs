@@ -39,6 +39,16 @@ namespace Yavit.StellaLog.Core.Utils
 			if (value == null) {
 				throw new ArgumentNullException ("value");
 			}
+
+			WeakReference r;
+			if (dic.TryGetValue(key, out r)) {
+				if (r.IsAlive) {
+					throw new ArgumentException ("Duplicate key.", "key");
+				}
+				dic [key] = new WeakReference(value);
+				return;
+			}
+
 			dic.Add (key, new WeakReference (value));
 		}
 		public bool ContainsKey (TKey key)
