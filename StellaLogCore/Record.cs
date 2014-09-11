@@ -19,6 +19,8 @@ namespace Yavit.StellaLog.Core
 				throw new ArgumentNullException ("manager");
 			this.manager = manager;
 			this.attributes = new object[manager.AttributeCount];
+
+			this.Time = DateTime.UtcNow;
 		}
 
 		~Record()
