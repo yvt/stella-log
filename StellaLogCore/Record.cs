@@ -71,24 +71,27 @@ namespace Yavit.StellaLog.Core
 		public void Save()
 		{
 			ReloadIfNeeded ();
-			if (recordId == null) {
-				try {
-					recordId = GenerateRecordId ();
-					manager.currentUpdatingRecordId = recordId;
-					manager.table.Update ((long)recordId, this);
-				} catch {
-					recordId = null;
-					throw;
-				} finally {
-					manager.currentUpdatingRecordId = null;
+			using (var t = manager.book.BeginTransaction ()) {
+				if (recordId == null) {
+					try {
+						recordId = GenerateRecordId ();
+						manager.currentUpdatingRecordId = recordId;
+						manager.table.Update ((long)recordId, this);
+					} catch {
+						recordId = null;
+						throw;
+					} finally {
+						manager.currentUpdatingRecordId = null;
+					}
+				} else {
+					try {
+						manager.currentUpdatingRecordId = recordId;
+						manager.table.Update ((long)recordId, this);
+					} finally {
+						manager.currentUpdatingRecordId = null;
+					}
 				}
-			} else {
-				try {
-					manager.currentUpdatingRecordId = recordId;
-					manager.table.Update ((long)recordId, this);
-				} finally {
-					manager.currentUpdatingRecordId = null;
-				}
+				t.Commit ();
 			}
 			needsReload = false;
 		}

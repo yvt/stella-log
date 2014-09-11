@@ -110,7 +110,14 @@ namespace Yavit.StellaDB.LowLevel
 
 			BTree tree;
 			if (btrees.TryGetValue(blockId, out tree)) {
-				return tree;
+				try {
+					if (tree.BlockId != blockId) {
+						throw new InvalidOperationException();
+					}
+					return tree;
+				} catch (ObjectDisposedException) {
+					btrees.Remove (blockId);
+				}
 			}
 
 			tree = new BTree (this, blockId, comparer, null);
@@ -150,11 +157,18 @@ namespace Yavit.StellaDB.LowLevel
 
 			Blob blob;
 			if (blobs.TryGetValue(blockId, out blob)) {
-				return blob;
+				try {
+					if (blob.BlockId != blockId) {
+						throw new InvalidOperationException();
+					}
+					return blob;
+				} catch (ObjectDisposedException) {
+					blobs.Remove (blockId);
+				}
 			}
 
 			blob = new Blob (this, blockId);
-			blobs.Add (blockId, blob);
+			blobs [blockId] = blob;
 			return blob;
 		}
 		public Blob CreateBlob()

@@ -8,7 +8,7 @@ namespace Yavit.StellaLog.Core
 		readonly List<string> attributes = new List<string>();
 		readonly Dictionary<string, int> attributeMap = new Dictionary<string, int>();
 
-		readonly LogBook book;
+		internal readonly LogBook book;
 		internal readonly VersionControlledTable table;
 
 		readonly StellaDB.Ston.StonSerializer ston;
