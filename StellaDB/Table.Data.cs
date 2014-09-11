@@ -59,6 +59,7 @@ namespace Yavit.StellaDB
 		public void InsertRaw(long rowId, byte[] value, bool updateOnDuplicate)
 		{
 			InternalInsertRaw (rowId, value, updateOnDuplicate, false);
+			database.DoAutoCommit ();
 		}
 
 		public long InsertRaw(byte[] value, bool updateOnDuplicate)
@@ -66,12 +67,14 @@ namespace Yavit.StellaDB
 			var rowId = AutoIncrementRowIdValue;
 			InsertRaw (AutoIncrementRowIdValue, value, updateOnDuplicate);
 			++AutoIncrementRowIdValue;
+			database.DoAutoCommit ();
 			return rowId;
 		}
 
 		public void UpdateRaw(long rowId, byte[] value)
 		{
 			InternalInsertRaw (rowId, value, true, true);
+			database.DoAutoCommit ();
 		}
 
 		public byte[] FetchRaw(long rowId)
@@ -105,6 +108,8 @@ namespace Yavit.StellaDB
 				catch (Ston.StonVariantException) { }
 
 				store.DeleteEntry (rowIdBuffer);
+
+				database.DoAutoCommit ();
 			}
 		}
 		#endregion

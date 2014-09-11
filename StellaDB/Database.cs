@@ -178,6 +178,7 @@ namespace Yavit.StellaDB
 
 			if (!tables.TryGetValue(name, out table)) {
 				table = new Table (this, name);
+				DoAutoCommit ();
 				tables.Add (name, table);
 			}
 

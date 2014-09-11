@@ -105,6 +105,7 @@ namespace Yavit.StellaDB
 			set {
 				EnsureStoreCreated ();
 				store.UserInfo1 = value;
+				database.DoAutoCommit ();
 			}
 		}
 
@@ -120,6 +121,8 @@ namespace Yavit.StellaDB
 			database.MasterTable.RemoveTable (tableNameBytes, TableId);
 			store.Drop ();
 			store = null;
+
+			database.DoAutoCommit ();
 
 			Unload ();
 		}

@@ -222,6 +222,7 @@ namespace Yavit.StellaDB
 				catch (Ston.StonVariantException) { }
 			}
 
+			database.DoAutoCommit ();
 		}
 
 		public void RemoveIndex(string[] entryNames)
@@ -239,6 +240,8 @@ namespace Yavit.StellaDB
 				tidx.Drop ();
 				indices.Remove (entryNames);
 				InvalidateQueryOptimizer ();
+
+				database.DoAutoCommit ();
 			}
 		}
 
@@ -253,6 +256,8 @@ namespace Yavit.StellaDB
 			indices.Clear ();
 
 			InvalidateQueryOptimizer ();
+
+			database.DoAutoCommit ();
 		}
 
 		void InsertRowToIndex(long rowId, Ston.StonVariant value)
