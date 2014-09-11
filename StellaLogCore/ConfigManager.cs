@@ -34,7 +34,7 @@ namespace Yavit.StellaLog.Core
 		{
 			this.book = book;
 
-			table = book.VersionController.GetTable ("Config");
+			table = book.versionController.GetTable ("Config");
 			table.BaseTable.EnsureIndex (new [] {
 				StellaDB.Table.IndexEntry.CreateBinaryIndexEntry("Key", 32)
 			});

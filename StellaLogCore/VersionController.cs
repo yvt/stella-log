@@ -211,7 +211,7 @@ namespace Yavit.StellaLog.Core
 		internal VersionController (LogBook book)
 		{
 			this.book = book;
-			db = book.Database;
+			db = book.database;
 
 			branchTable = db["StellaVCS.Branches"];
 			revisionTable = db ["StellaVCS.Revisions"];
@@ -421,11 +421,11 @@ namespace Yavit.StellaLog.Core
 		internal byte[] CurrentBranchRaw
 		{
 			get {
-				return (byte[])book.LocalConfig ["StellaVCS.Branch"];
+				return (byte[])book.localConfig ["StellaVCS.Branch"];
 			}
 			set {
 				using (var t = book.BeginTransaction ()) {
-					book.LocalConfig ["StellaVCS.Branch"] = value;
+					book.localConfig ["StellaVCS.Branch"] = value;
 					t.Commit ();
 				}
 			}
@@ -831,11 +831,11 @@ namespace Yavit.StellaLog.Core
 		internal byte[] CurrentMergeTargetRevisionId
 		{
 			get {
-				return (byte[])book.LocalConfig ["StellaVCS.MergeTargetRevision"];
+				return (byte[])book.localConfig ["StellaVCS.MergeTargetRevision"];
 			}
 			set {
 				using (var t = book.BeginTransaction ()) {
-					book.LocalConfig ["StellaVCS.MergeTargetRevision"] = value;
+					book.localConfig ["StellaVCS.MergeTargetRevision"] = value;
 					t.Commit ();
 				}
 			}
@@ -843,11 +843,11 @@ namespace Yavit.StellaLog.Core
 		internal byte[] CurrentMergedRevisionId
 		{
 			get {
-				return (byte[])book.LocalConfig ["StellaVCS.MergedRevision"];
+				return (byte[])book.localConfig ["StellaVCS.MergedRevision"];
 			}
 			set {
 				using (var t = book.BeginTransaction ()) {
-					book.LocalConfig ["StellaVCS.MergedRevision"] = value;
+					book.localConfig ["StellaVCS.MergedRevision"] = value;
 					t.Commit ();
 				}
 			}
@@ -855,11 +855,11 @@ namespace Yavit.StellaLog.Core
 		internal byte[] CurrentMergeOriginId
 		{
 			get {
-				return (byte[])book.LocalConfig ["StellaVCS.MergeOrigin"];
+				return (byte[])book.localConfig ["StellaVCS.MergeOrigin"];
 			}
 			set {
 				using (var t = book.BeginTransaction ()) {
-					book.LocalConfig ["StellaVCS.MergeOrigin"] = value;
+					book.localConfig ["StellaVCS.MergeOrigin"] = value;
 					t.Commit ();
 				}
 			}
@@ -1397,7 +1397,7 @@ namespace Yavit.StellaLog.Core
 			if (tables.TryGetValue(name, out table)) {
 				return table;
 			}
-			table = new VersionControlledTableImpl (this, name, book.Database [name]);
+			table = new VersionControlledTableImpl (this, name, book.database [name]);
 			tables.Add (name, table);
 			tablesByBytes.Add (utf8.GetBytes (name), table);
 			return table;
@@ -1410,13 +1410,13 @@ namespace Yavit.StellaLog.Core
 				return table;
 			}
 			string name = utf8.GetString (bytes);
-			table = new VersionControlledTableImpl (this, name, book.Database [name]);
+			table = new VersionControlledTableImpl (this, name, book.database [name]);
 			tables.Add (name, table);
 			tablesByBytes.Add (bytes, table);
 			return table;
 		}
 
-		internal VersionControlledTable GetTable(string name)
+		public VersionControlledTable GetTable(string name)
 		{
 			return GetTableImpl(name);
 		}
@@ -1428,13 +1428,13 @@ namespace Yavit.StellaLog.Core
 		#endregion
 	}
 
-	internal enum VersionControlledTableUpdateReason
+	public enum VersionControlledTableUpdateReason
 	{
 		VersionController,
 		TableUpdate
 	}
 
-	internal sealed class VersionControlledTableUpdatedEventArgs: EventArgs
+	public sealed class VersionControlledTableUpdatedEventArgs: EventArgs
 	{
 		internal byte[] oldValue, newValue;
 		readonly long rowId;
@@ -1460,7 +1460,7 @@ namespace Yavit.StellaLog.Core
 		}
 	}
 
-	internal abstract class VersionControlledTable
+	public abstract class VersionControlledTable
 	{
 		readonly StellaDB.Table baseTable;
 		readonly string name;

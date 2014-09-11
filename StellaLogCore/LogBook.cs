@@ -6,33 +6,58 @@ namespace Yavit.StellaLog.Core
 	{
 		readonly NestedTransactionManager transactions;
 
-		internal readonly StellaDB.Database Database;
-		public readonly LocalConfigManager LocalConfig;
-		public readonly VersionController VersionController;
-		public readonly ConfigManager Config;
-		public readonly RecordManager Records;
+		internal readonly StellaDB.Database database;
+		internal readonly LocalConfigManager localConfig;
+		internal readonly VersionController versionController;
+		internal readonly ConfigManager config;
+		internal readonly RecordManager records;
 
 		public LogBook (string path)
 		{
-			Database = StellaDB.Database.OpenFile (path);
-			transactions = new NestedTransactionManager (Database);
+			database = StellaDB.Database.OpenFile (path);
+			transactions = new NestedTransactionManager (database);
 
 			using (var t = BeginTransaction()) {
-				LocalConfig = new LocalConfigManager (this);
-				VersionController = new VersionController (this);
+				localConfig = new LocalConfigManager (this);
+				versionController = new VersionController (this);
 
-				Config = new ConfigManager (this);
+				config = new ConfigManager (this);
 
-				Records = new RecordManager (this);
+				records = new RecordManager (this);
 
 				t.Commit ();
 			}
 		}
 
+		public StellaDB.Database Database
+		{
+			get { return database; }
+		}
+
+		public LocalConfigManager LocalConfig
+		{
+			get { return localConfig; }
+		}
+
+		public VersionController VersionController
+		{
+			get { return versionController; }
+		}
+
+		public ConfigManager Config
+		{
+			get { return config; }
+		}
+
+		public RecordManager Records
+		{
+			get { return records; }
+		}
+
 		public void Dispose ()
 		{
 			transactions.Dispose ();
-			Database.Dispose ();
+			database.Dispose ();
 		}
 
 

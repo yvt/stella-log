@@ -25,7 +25,7 @@ namespace Yavit.StellaLog.Core
 		public RecordManager (LogBook book)
 		{
 			this.book = book;
-			table = book.VersionController.GetTable ("Records");
+			table = book.versionController.GetTable ("Records");
 
 			ston = new StellaDB.Ston.StonSerializer ();
 			ston.RegisterConverters (new [] { new RecordConverter(this) });
