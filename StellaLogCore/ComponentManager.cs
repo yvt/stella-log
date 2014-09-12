@@ -18,6 +18,11 @@ namespace Yavit.StellaLog.Core
 		readonly Dictionary<Type, ComponentInfo> components = 
 			new Dictionary<Type, ComponentInfo>();
 
+		public event EventHandler<ComponentInfoEventArgs> Added;
+		public event EventHandler<ComponentInfoEventArgs> Adding;
+		public event EventHandler<ComponentInfoEventArgs> Removed;
+		public event EventHandler<ComponentInfoEventArgs> Removing;
+
 		internal ComponentManager(LogBook book)
 		{
 			this.book = book;
@@ -31,14 +36,23 @@ namespace Yavit.StellaLog.Core
 				foreach (var c in components) {
 					if (c.Value.RowId == e.RowId) {
 						var obj = c.Value.Object;
+
+						OnRemoving(new ComponentInfoEventArgs(c.Value));
+
 						c.Value.Unload();
-						obj.Dispose();
 						components.Remove(c.Key);
+
+						OnRemoved(new ComponentInfoEventArgs(c.Value));
+
+						obj.Dispose();
 
 						if (e.newValue.Length > 0) {
 							var nc = new ComponentInfo(e.RowId, book,
 								table.BaseTable.Serializer.Deserialize<DbComponent>(e.newValue).Name);
+
 							if (nc.Object != null) {
+								OnAdding(new ComponentInfoEventArgs(nc));
+
 								components.Add(nc.Object.GetType(), nc);
 
 								try {
@@ -48,6 +62,8 @@ namespace Yavit.StellaLog.Core
 									nc.Object.Dispose();
 									throw;
 								}
+
+								OnAdded(new ComponentInfoEventArgs(nc));
 							}
 						}
 						break;
@@ -58,12 +74,53 @@ namespace Yavit.StellaLog.Core
 			foreach (var row in table.Query(table.Prepare((r,v)=>true))) {
 				var e = row.ToObject<DbComponent> ();
 				try {
-					AddComponent(e.Name);
+					var nc = new ComponentInfo(row.RowId, book, e.Name);
+
+					if (nc.Object != null) {
+						OnAdding(new ComponentInfoEventArgs(nc));
+
+						components.Add(nc.Object.GetType(), nc);
+
+						try {
+							nc.Load();
+						} catch {
+							components.Remove(nc.Object.GetType());
+							nc.Object.Dispose();
+							throw;
+						}
+
+						OnAdded(new ComponentInfoEventArgs(nc));
+					}
 				} catch (ComponentLoadException) {
 					// Ignore load error...
 				}
 			}
 		}
+
+		void OnAdded(ComponentInfoEventArgs e)
+		{
+			if (Added != null)
+				Added (this, e);
+		}
+
+		void OnAdding(ComponentInfoEventArgs e)
+		{
+			if (Adding != null)
+				Adding (this, e);
+		}
+
+		void OnRemoved(ComponentInfoEventArgs e)
+		{
+			if (Removed != null)
+				Removed (this, e);
+		}
+
+		void OnRemoving(ComponentInfoEventArgs e)
+		{
+			if (Removing != null)
+				Removing (this, e);
+		}
+
 
 		public ComponentInfo AddComponent(string name)
 		{
@@ -84,19 +141,19 @@ namespace Yavit.StellaLog.Core
 				try {
 					// Create component
 					c = new ComponentInfo (rowId, book, name);
+
 					if (c.Object == null) {
 						throw new ComponentLoadException (c.LoadException);
 					}
+
+					OnAdding(new ComponentInfoEventArgs(c));
+
 					components.Add(c.Object.GetType(), c);
 					t.Commit ();
 				} catch {
 					table.Delete (rowId);
 					t.Commit ();
 					throw;
-				}
-
-				if (c.Object == null) {
-					throw new ComponentLoadException (c.LoadException);
 				}
 
 				try {
@@ -112,6 +169,7 @@ namespace Yavit.StellaLog.Core
 					throw;
 				}
 
+				OnAdded(new ComponentInfoEventArgs(c));
 			}
 		}
 
@@ -120,12 +178,14 @@ namespace Yavit.StellaLog.Core
 			foreach (var e in components) {
 				if (e.Value == info) {
 					var obj = info.Object;
+					OnRemoving (new ComponentInfoEventArgs(e.Value));
 					info.Unload ();
 					using (var t = book.BeginTransaction()) {
 						table.Delete (info.RowId);
 						components.Remove (e.Key);
 						t.Commit ();
 					}
+					OnRemoved (new ComponentInfoEventArgs(e.Value));
 					obj.Dispose ();
 					break;
 				}
@@ -177,6 +237,16 @@ namespace Yavit.StellaLog.Core
 			foreach (var e in disposedObjects) {
 				e.Dispose ();
 			}
+		}
+	}
+
+	public class ComponentInfoEventArgs: EventArgs
+	{
+		public ComponentInfo ComponentInfo { get; private set; }
+
+		public ComponentInfoEventArgs(ComponentInfo c)
+		{
+			ComponentInfo = c;
 		}
 	}
 
