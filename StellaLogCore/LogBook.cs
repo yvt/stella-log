@@ -11,6 +11,7 @@ namespace Yavit.StellaLog.Core
 		internal readonly VersionController versionController;
 		internal readonly ConfigManager config;
 		internal readonly RecordManager records;
+		internal readonly ComponentManager components;
 
 		public LogBook (string path)
 		{
@@ -24,6 +25,8 @@ namespace Yavit.StellaLog.Core
 				config = new ConfigManager (this);
 
 				records = new RecordManager (this);
+
+				components = new ComponentManager (this);
 
 				t.Commit ();
 			}
@@ -54,8 +57,25 @@ namespace Yavit.StellaLog.Core
 			get { return records; }
 		}
 
+		public ComponentManager ComponentManager
+		{
+			get { return components; }
+		}
+
+		public Component GetComponent(Type t)
+		{
+			return components.GetComponent (t);
+		}
+
+		public T GetComponent<T>() where T : Component
+		{
+			return components.GetComponent<T> ();
+		}
+
 		public void Dispose ()
 		{
+			components.UnloadAll ();
+			components.DisposeAll ();
 			transactions.Dispose ();
 			database.Dispose ();
 		}

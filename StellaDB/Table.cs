@@ -36,6 +36,7 @@ namespace Yavit.StellaDB
 			LoadStore ();
 			LoadIndices ();
 			loaded = true;
+			++tableStructureState;
 		}
 
 

@@ -152,6 +152,8 @@ namespace Yavit.StellaDB
 				// FIXME: cardinality is currently approximated by field count
 				optimizer.RegisterIndex (new QOIndex(idx.Value, idx.Value.Index.GetFields().Count()));
 			}
+
+			++tableStructureState;
 		}
 
 		void LoadIndices()

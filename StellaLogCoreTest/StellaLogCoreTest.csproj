@@ -54,6 +54,7 @@
     <Compile Include="ConfigTest.cs" />
     <Compile Include="VCSTest.cs" />
     <Compile Include="RecordTest.cs" />
+    <Compile Include="ComponentTest.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

@@ -45,6 +45,7 @@
     <Compile Include="ConfigManager.cs" />
     <Compile Include="RecordManager.cs" />
     <Compile Include="Utils\WeakValueDictionary.cs" />
+    <Compile Include="ComponentManager.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

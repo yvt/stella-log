@@ -7,6 +7,7 @@ namespace Yavit.StellaDB
 {
 	public partial class Table
 	{
+		int tableStructureState = 0;
 
 		#region Raw Row Access
 		void InternalInsertRaw(long rowId, byte[] value, bool updateOnDuplicate, bool errorOnNotFound)
@@ -229,6 +230,8 @@ namespace Yavit.StellaDB
 
 		public sealed class PreparedQuery
 		{
+			internal int TableStructureState;
+			internal Expression<Func<long, Ston.StonVariant, bool>> Predicate;
 			internal Func<Indexer.QueryOptimizer.ProcessResult> PlanBuilder;
 		}
 
@@ -236,9 +239,8 @@ namespace Yavit.StellaDB
 		public PreparedQuery Prepare(Expression<Func<long, Ston.StonVariant, bool>> predicate)
 		{
 			EnsureQueryOptimizer ();
-			var planBuilder = optimizer.Process (predicate, new Indexer.QueryOptimizer.SortKey[0]);
 			return new PreparedQuery () {
-				PlanBuilder = planBuilder
+				Predicate = predicate
 			};
 		}
 
@@ -247,13 +249,20 @@ namespace Yavit.StellaDB
 			if (stmt == null)
 				throw new ArgumentNullException ("stmt");
 
+			if (stmt.PlanBuilder == null ||
+				tableStructureState != stmt.TableStructureState) {
+				EnsureQueryOptimizer ();
+				var planBuilder = optimizer.Process (stmt.Predicate, new Indexer.QueryOptimizer.SortKey[0]);
+				stmt.PlanBuilder = planBuilder;
+				stmt.TableStructureState = tableStructureState;
+			}
 			var plan = stmt.PlanBuilder ();
 
 			IEnumerable<ResultRow> unsorted;
-			if (plan.RowIdUsage != null) {
-				unsorted = QueryByTableScan (plan.RowIdUsage);
-			} else if (plan.IndexUsage != null) {
-				unsorted = QueryByIndex (plan.IndexUsage);
+			if (store != null && plan.RowIdUsage != null) {
+				unsorted = QueryByTableScan (tableStructureState, plan.RowIdUsage);
+			} else if (store != null && plan.IndexUsage != null) {
+				unsorted = QueryByIndex (tableStructureState, plan.IndexUsage);
 			} else {
 				unsorted = Enumerable.Empty<ResultRow> ();
 			}
@@ -270,8 +279,16 @@ namespace Yavit.StellaDB
 			return unsorted;
 		}
 
-		IEnumerable<ResultRow> QueryByTableScan(Indexer.QueryOptimizer.RowIdUsage plan)
+		void CheckMatchStructureState(int state)
 		{
+			if (tableStructureState != state || store == null) {
+				throw new InvalidOperationException("Table structure was modified or a transaction was rollbacked.");
+			}
+		}
+
+		IEnumerable<ResultRow> QueryByTableScan(int strState, Indexer.QueryOptimizer.RowIdUsage plan)
+		{
+			CheckMatchStructureState (strState);
 			EncodeRowId (rowIdBuffer, plan.StartRowId ?? (plan.Descending ? long.MaxValue : 0));
 			IEnumerable<LowLevel.IKeyValueStoreEntry> entries = 
 				plan.Descending ? store.EnumerateEntiresInDescendingOrder (rowIdBuffer) :
@@ -286,10 +303,12 @@ namespace Yavit.StellaDB
 
 				var data = entry.ReadValue ();
 				yield return new ResultRow (this, rowId, data);
+				CheckMatchStructureState (strState);
 			}
 		}
-		IEnumerable<ResultRow> QueryByIndex(Indexer.QueryOptimizer.IndexUsage plan)
+		IEnumerable<ResultRow> QueryByIndex(int strState, Indexer.QueryOptimizer.IndexUsage plan)
 		{
+			CheckMatchStructureState (strState);
 			var index = (QOIndex) plan.Index;
 			var tableIndex = index.TableIndex;
 			var istore = tableIndex.Store;
@@ -321,6 +340,7 @@ namespace Yavit.StellaDB
 				if (e != null) {
 					var data = e.ReadValue ();
 					yield return new ResultRow (this, rowId, data);
+					CheckMatchStructureState (strState);
 				}
 			}
 		}

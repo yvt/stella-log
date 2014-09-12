@@ -1249,7 +1249,7 @@ namespace Yavit.StellaLog.Core
 			readonly byte[] tableNameBytes;
 
 			public VersionControlledTableImpl(VersionController vc, string tableName, StellaDB.Table table):
-			base(table, tableName)
+			base(vc.book, table, tableName)
 			{
 				this.vc = vc;
 				tableNameBytes = utf8.GetBytes(tableName);
@@ -1454,6 +1454,16 @@ namespace Yavit.StellaLog.Core
 			get { return rowId; }
 		}
 
+		public byte[] GetOldValue ()
+		{
+			return (byte[])oldValue.Clone();
+		}
+
+		public byte[] GetNewValue()
+		{
+			return (byte[])newValue.Clone ();
+		}
+
 		public VersionControlledTableUpdateReason Reason
 		{ 
 			get { return reason; }
@@ -1462,13 +1472,15 @@ namespace Yavit.StellaLog.Core
 
 	public abstract class VersionControlledTable
 	{
+		readonly LogBook book;
 		readonly StellaDB.Table baseTable;
 		readonly string name;
 
 		public event EventHandler<VersionControlledTableUpdatedEventArgs> Updated;
 
-		protected VersionControlledTable(StellaDB.Table baseTable, string name)
+		protected VersionControlledTable(LogBook book, StellaDB.Table baseTable, string name)
 		{
+			this.book = book;
 			this.baseTable = baseTable;
 			this.name = name;
 		}
@@ -1477,6 +1489,11 @@ namespace Yavit.StellaLog.Core
 		{
 			if (Updated != null)
 				Updated (this, e);
+		}
+
+		public LogBook LogBook
+		{
+			get { return book;}
 		}
 
 		public string Name
@@ -1574,6 +1591,126 @@ namespace Yavit.StellaLog.Core
 		}
 
 
+	}
+
+	public sealed class VersionControlledTableBufferedEventProxy
+	{
+		public event EventHandler<VersionControlledTableUpdatedEventArgs> Updated;
+
+		readonly VersionControlledTable table;
+
+		sealed class Update
+		{
+			public byte[] Before, After;
+		}
+		Dictionary<long, Update> deferredUpdates = 
+			new Dictionary<long, Update> ();
+		bool defer = false;
+
+		public VersionControlledTableBufferedEventProxy(VersionControlledTable table)
+		{
+			this.table = table;
+			table.Updated += HandleUpdated;
+			table.LogBook.VersionController.Checkouting += HandleCheckouting;
+			table.LogBook.VersionController.Checkouted += HandleCheckouted;
+			table.LogBook.VersionController.Merging += HandleMerging;
+			table.LogBook.VersionController.Merged += HandleMerged;
+			table.LogBook.VersionController.Reverting += HandleReverting;
+			table.LogBook.VersionController.Reverted += HandleReverted;
+		}
+
+		public VersionControlledTable Table
+		{
+			get { return table; }
+		}
+
+		void OnUpdate(VersionControlledTableUpdatedEventArgs e)
+		{
+			if (Updated != null)
+				Updated (this, e);
+		}
+
+		void StartUpdate()
+		{
+			defer = true;
+		}
+
+		void EndUpdate()
+		{
+			defer = false;
+
+			var upd = deferredUpdates;
+			if (upd.Count == 0) {
+				return;
+			}
+			deferredUpdates = new Dictionary<long, Update> ();
+			foreach (var u in upd) {
+				if (StellaDB.DefaultKeyComparer.Instance.Equals (u.Value.Before, u.Value.After))
+					continue;
+
+				OnUpdate (new VersionControlledTableUpdatedEventArgs(u.Key, u.Value.Before, u.Value.After,
+					VersionControlledTableUpdateReason.VersionController));
+			}
+		}
+
+		void HandleReverted (object sender, RevertEventArgs e)
+		{
+			EndUpdate ();
+		}
+
+		void HandleReverting (object sender, RevertEventArgs e)
+		{
+			StartUpdate ();
+		}
+
+		void HandleMerged (object sender, MergedEventArgs e)
+		{
+			EndUpdate ();
+		}
+
+		void HandleMerging (object sender, MergingEventArgs e)
+		{
+			StartUpdate ();
+		}
+
+		void HandleCheckouted (object sender, CheckoutEventArgs e)
+		{
+			EndUpdate ();
+		}
+
+		void HandleCheckouting (object sender, CheckoutEventArgs e)
+		{
+			StartUpdate ();
+		}
+
+		public void RemoveEventHandlers()
+		{
+			table.Updated -= HandleUpdated;
+			table.LogBook.VersionController.Checkouting -= HandleCheckouting;
+			table.LogBook.VersionController.Checkouted -= HandleCheckouted;
+			table.LogBook.VersionController.Merging -= HandleMerging;
+			table.LogBook.VersionController.Merged -= HandleMerged;
+			table.LogBook.VersionController.Reverting -= HandleReverting;
+			table.LogBook.VersionController.Reverted -= HandleReverted;
+		}
+
+		void HandleUpdated (object sender, VersionControlledTableUpdatedEventArgs e)
+		{
+			if (defer) {
+				Update update;
+				if (deferredUpdates.TryGetValue(e.RowId, out update)) {
+					update.After = e.newValue;
+				} else {
+					update = new Update () {
+						Before = e.oldValue,
+						After = e.newValue
+					};
+					deferredUpdates.Add (e.RowId, update);
+				}
+			} else {
+				OnUpdate (e);
+			}
+		}
 	}
 }
 
