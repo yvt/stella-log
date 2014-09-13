@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 
 namespace Yavit.StellaDB.Ston
 {
+	[Serializable]
 	public class StonSerializer
 	{
 

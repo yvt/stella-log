@@ -7,7 +7,7 @@ namespace Yavit.StellaDB
 		void Commit();
 		void Rollback();
 	}
-	public sealed class Transaction: ITransaction
+	public sealed class Transaction: MarshalByRefObject, ITransaction
 	{
 		Database database;
 		bool commited = false;

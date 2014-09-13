@@ -29,7 +29,7 @@ namespace Yavit.StellaDB.LowLevel
 
 	}
 
-	public partial class BTree: IOrderedKeyValueStore
+	public partial class BTree: MarshalByRefObject, IOrderedKeyValueStore
 	{
 		/*
 		 *   B-Tree Design

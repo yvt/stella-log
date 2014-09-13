@@ -10,6 +10,7 @@ namespace Yavit.StellaDB
 		bool IsValidKey(byte[] key);
 	}
 
+	[Serializable]
 	public sealed class DefaultKeyComparer: IKeyComparer, System.Collections.Generic.IEqualityComparer<byte[]>
 	{
 		public static readonly DefaultKeyComparer Instance = new DefaultKeyComparer();
@@ -63,6 +64,7 @@ namespace Yavit.StellaDB
 
 	}
 
+	[Serializable]
 	public sealed class ReversedKeyComparer: IKeyComparer, System.Collections.Generic.IEqualityComparer<byte[]>
 	{
 		public static readonly ReversedKeyComparer Instance = new ReversedKeyComparer();

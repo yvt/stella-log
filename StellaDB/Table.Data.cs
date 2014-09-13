@@ -117,6 +117,7 @@ namespace Yavit.StellaDB
 
 		#region Row Access
 
+		[Serializable]
 		public class ResultRow
 		{
 			readonly Table table;
@@ -228,7 +229,7 @@ namespace Yavit.StellaDB
 			}
 		}
 
-		public sealed class PreparedQuery
+		public sealed class PreparedQuery: MarshalByRefObject
 		{
 			internal int TableStructureState;
 			internal Expression<Func<long, Ston.StonVariant, bool>> Predicate;

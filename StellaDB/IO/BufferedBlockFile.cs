@@ -3,9 +3,9 @@ using System.Collections.Generic;
 
 namespace Yavit.StellaDB.IO
 {
-	public class BufferedBlockFile: IBlockStorage
+	public class BufferedBlockFile: BlockStorage
 	{
-		private readonly IBlockStorage baseBlockFile;
+		private readonly BlockStorage baseBlockFile;
 
 		private sealed class Block
 		{
@@ -22,7 +22,7 @@ namespace Yavit.StellaDB.IO
 
 		private int capacity;
 
-		public BufferedBlockFile (IBlockStorage baseBlockFile, int capacity = 64)
+		public BufferedBlockFile (BlockStorage baseBlockFile, int capacity = 64)
 		{
 			this.baseBlockFile = baseBlockFile;
 			this.capacity = capacity;
@@ -102,7 +102,7 @@ namespace Yavit.StellaDB.IO
 			return node.Value;
 		}
 
-		public void ReadBlock (long blockId, byte[] buffer, int offset)
+		public override void ReadBlock (long blockId, byte[] buffer, int offset)
 		{
 			if (capacity == 0) {
 				// not cached
@@ -115,7 +115,7 @@ namespace Yavit.StellaDB.IO
 			Buffer.BlockCopy (block.bytes, 0, buffer, offset, block.bytes.Length);
 		}
 
-		public void WriteBlock (long blockId, byte[] buffer, int offset)
+		public override void WriteBlock (long blockId, byte[] buffer, int offset)
 		{
 			baseBlockFile.NumBlocks = Math.Max (baseBlockFile.NumBlocks, blockId + 1);
 
@@ -131,7 +131,7 @@ namespace Yavit.StellaDB.IO
 			Buffer.BlockCopy (buffer, offset, block.bytes, 0, block.bytes.Length);
 		}
 
-		public void Flush ()
+		public override void Flush ()
 		{
 			foreach (var block in blocks) {
 				Writeback (block);
@@ -139,13 +139,13 @@ namespace Yavit.StellaDB.IO
 			baseBlockFile.Flush ();
 		}
 
-		public int BlockSize {
+		public override int BlockSize {
 			get {
 				return baseBlockFile.BlockSize;
 			}
 		}
 
-		public long NumBlocks {
+		public override long NumBlocks {
 			get {
 				return baseBlockFile.NumBlocks;
 			}

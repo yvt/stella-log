@@ -2,7 +2,7 @@
 
 namespace Yavit.StellaDB.LowLevel
 {
-	public class Blob
+	public class Blob: MarshalByRefObject
 	{
 		readonly LowLevelDatabase db;
 		readonly LinkedListBlob lblob;

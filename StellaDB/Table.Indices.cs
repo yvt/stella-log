@@ -90,6 +90,7 @@ namespace Yavit.StellaDB
 			}
 		}
 
+		[Serializable]
 		public class IndexEntry
 		{
 			readonly string name;

@@ -7,6 +7,7 @@ using Exprs = System.Linq.Expressions;
 
 namespace Yavit.StellaDB.Ston
 {
+	[Serializable]
 	public abstract class StonConverter
 	{
 		public abstract IEnumerable<Type> SupportedTypes { get; }
@@ -21,6 +22,7 @@ namespace Yavit.StellaDB.Ston
 	/// <summary>
 	/// Ston converter for classes with SerializableAttribute.
 	/// </summary>
+	[Serializable]
 	sealed class StonConverterForSerializable: StonConverter
 	{
 		readonly Type type;
@@ -28,7 +30,9 @@ namespace Yavit.StellaDB.Ston
 		readonly Field[] fields;
 
 		int usageCount = 0;
+		[NonSerialized]
 		Func<IDictionary<string, object>, object> deserializer;
+		[NonSerialized]
 		Func<object, IDictionary<string, object>> serializer;
 
 		class Field

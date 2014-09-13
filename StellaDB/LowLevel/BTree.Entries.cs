@@ -81,7 +81,7 @@ namespace Yavit.StellaDB.LowLevel
 			activeEntry = e;
 		}
 
-		public class Entry: IKeyValueStoreEntry
+		public class Entry: MarshalByRefObject, IKeyValueStoreEntry
 		{
 			BTree tree;
 			int cursorDepth;

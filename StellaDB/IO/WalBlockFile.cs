@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Yavit.StellaDB.IO
 {
-	public sealed class WalBlockFile: IBlockStorage
+	public sealed class WalBlockFile: BlockStorage
 	{
 		private readonly BlockFile baseBlockFile;
 		private readonly Stream stream;
@@ -283,7 +283,7 @@ namespace Yavit.StellaDB.IO
 			return true;
 		}
 
-		public void Flush ()
+		public override void Flush ()
 		{
 			if (lastError != null) {
 				return;
@@ -336,7 +336,7 @@ namespace Yavit.StellaDB.IO
 			}
 		}
 
-		public long NumBlocks {
+		public override long NumBlocks {
 			get {
 				return numBlocks;
 			}
@@ -353,7 +353,7 @@ namespace Yavit.StellaDB.IO
 		}
 
 
-		public void ReadBlock (long blockId, byte[] buffer, int offset)
+		public override void ReadBlock (long blockId, byte[] buffer, int offset)
 		{
 			if (blockId > 1L << (62 - blockSizeBits)) {
 				throw new ArgumentOutOfRangeException ("blockId");
@@ -369,7 +369,7 @@ namespace Yavit.StellaDB.IO
 			}
 		}
 
-		public void WriteBlock (long blockId, byte[] buffer, int offset)
+		public override void WriteBlock (long blockId, byte[] buffer, int offset)
 		{
 			if (blockId > 1L << (62 - blockSizeBits)) {
 				throw new ArgumentOutOfRangeException ("blockId");
@@ -411,7 +411,7 @@ namespace Yavit.StellaDB.IO
 		
 		}
 
-		public int BlockSize {
+		public override int BlockSize {
 			get {
 				return blockSize;
 			}

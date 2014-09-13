@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Yavit.StellaDB
 {
-	public partial class Table
+	public partial class Table: MarshalByRefObject
 	{
 		Database database;
 		readonly string tableName;

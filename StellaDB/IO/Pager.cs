@@ -133,14 +133,14 @@ namespace Yavit.StellaDB.IO
 
 		readonly LinkedList<Page> dirtyPages = new LinkedList<Page> ();
 
-		readonly public IBlockStorage Storage;
+		readonly public BlockStorage Storage;
 
 		// Total number of unpinnedPages and freePagePool allowed. Should be at least 1.
 		readonly int maxCacheBlocks;
 
 		readonly public int BlockSize;
 
-		public Pager (IBlockStorage storage, int maxCacheBlocks)
+		public Pager (BlockStorage storage, int maxCacheBlocks)
 		{
 			if (storage == null)
 				throw new ArgumentNullException ("storage");

@@ -2,7 +2,7 @@ using System;
 
 namespace Yavit.StellaDB.IO
 {
-	public class BlockFile: IBlockStorage
+	public class BlockFile: BlockStorage
 	{
 		System.IO.Stream stream;
 		readonly int blockSize;
@@ -24,7 +24,7 @@ namespace Yavit.StellaDB.IO
 			numBlocks = stream.Length / (long)blockSize;
 		}
 
-		public void ReadBlock (long blockId, byte[] buffer, int start)
+		public override void ReadBlock (long blockId, byte[] buffer, int start)
 		{
 			if (blockId < 0) {
 				throw new ArgumentOutOfRangeException ("blockId");
@@ -33,7 +33,7 @@ namespace Yavit.StellaDB.IO
 			stream.Read (buffer, start, blockSize);
 		}
 
-		public void WriteBlock (long blockId, byte[] buffer, int start)
+		public override void WriteBlock (long blockId, byte[] buffer, int start)
 		{
 			if (blockId < 0) {
 				throw new ArgumentOutOfRangeException ("blockId");
@@ -46,12 +46,12 @@ namespace Yavit.StellaDB.IO
 			numBlocks = Math.Max (numBlocks, blockId + 1);
 		}
 
-		public void Flush()
+		public override void Flush()
 		{
 			stream.Flush ();
 		}
 
-		public long NumBlocks { 
+		public override long NumBlocks { 
 			get {
 				return numBlocks;
 			} 
@@ -63,7 +63,7 @@ namespace Yavit.StellaDB.IO
 			} 
 		}
 
-		public int BlockSize {
+		public override int BlockSize {
 			get {
 				return blockSize;
 			}

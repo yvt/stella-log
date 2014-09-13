@@ -16,11 +16,13 @@ namespace Yavit.StellaDB.Indexer
 		public abstract bool SupportsType(Type type);
 	}
 
+	[Serializable]
 	public abstract class KeyParameter
 	{
 		internal abstract KeyProvider CreateKeyProvider();
 	}
 
+	[Serializable]
 	public sealed class BinaryKeyParameters: KeyParameter
 	{
 		public int KeyLength { get; set; }
@@ -94,6 +96,7 @@ namespace Yavit.StellaDB.Indexer
 
 	}
 
+	[Serializable]
 	public sealed class NumericKeyParameters: KeyParameter
 	{
 		internal override KeyProvider CreateKeyProvider ()

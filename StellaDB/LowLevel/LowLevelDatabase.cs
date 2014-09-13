@@ -17,9 +17,9 @@ namespace Yavit.StellaDB.LowLevel
 		}
 	}
 
-	public class LowLevelDatabase
+	public class LowLevelDatabase: MarshalByRefObject
 	{
-		readonly StellaDB.IO.IBlockStorage Storage;
+		readonly StellaDB.IO.BlockStorage Storage;
 		internal readonly StellaDB.IO.Pager Pager;
 
 		internal readonly Superblock Superblock;
@@ -33,7 +33,7 @@ namespace Yavit.StellaDB.LowLevel
 		// TODO: use this (sync) everywhere
 		internal readonly object sync = new object();
 
-		public LowLevelDatabase (StellaDB.IO.IBlockStorage storage,
+		public LowLevelDatabase (StellaDB.IO.BlockStorage storage,
 			LowLevelDatabaseParameters param)
 		{
 			Storage = storage;
@@ -69,7 +69,7 @@ namespace Yavit.StellaDB.LowLevel
 			Flush ();
 		}
 
-		public LowLevelDatabase (StellaDB.IO.IBlockStorage storage):
+		public LowLevelDatabase (StellaDB.IO.BlockStorage storage):
 		this(storage, new LowLevelDatabaseParameters())
 		{ }
 

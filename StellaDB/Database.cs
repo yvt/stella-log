@@ -8,7 +8,7 @@ namespace Yavit.StellaDB
 		File
 	}
 
-	public class Database: IDisposable
+	public class Database: MarshalByRefObject, IDisposable
 	{
 		ITransaction currentTransaction = null;
 		LowLevel.LowLevelDatabase lldb;

@@ -2,6 +2,7 @@
 
 namespace Yavit.StellaDB
 {
+	[Serializable]
 	public class InvalidMagicNumberException: DataInconsistencyException
 	{
 		public InvalidMagicNumberException ():

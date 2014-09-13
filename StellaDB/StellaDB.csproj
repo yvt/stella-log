@@ -33,7 +33,6 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Database.cs" />
-    <Compile Include="IO\IBlockStorage.cs" />
     <Compile Include="IO\BlockFile.cs" />
     <Compile Include="InvalidMagicNumberException.cs" />
     <Compile Include="IO\WalBlockFile.cs" />
@@ -78,6 +77,7 @@
     <Compile Include="Table.Indices.cs" />
     <Compile Include="MasterTable.cs" />
     <Compile Include="Transaction.cs" />
+    <Compile Include="IO\BlockStorage.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

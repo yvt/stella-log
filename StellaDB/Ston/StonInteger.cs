@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Yavit.StellaDB.Ston
 {
+	[Serializable]
 	public struct StonInteger: IFormattable, IComparable,
 	IComparable<StonInteger>, IEquatable<StonInteger>, IConvertible
 	{
