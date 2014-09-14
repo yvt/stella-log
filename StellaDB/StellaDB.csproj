@@ -78,6 +78,8 @@
     <Compile Include="MasterTable.cs" />
     <Compile Include="Transaction.cs" />
     <Compile Include="IO\BlockStorage.cs" />
+    <Compile Include="PreparedTextQuery.cs" />
+    <Compile Include="PreparedTextQuery.Parser.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

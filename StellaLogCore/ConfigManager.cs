@@ -12,7 +12,7 @@ namespace Yavit.StellaLog.Core
 		readonly Dictionary<string, Entry> entries =
 			new Dictionary<string, Entry>();
 
-		readonly StellaDB.Table.PreparedQuery query;
+		readonly StellaDB.PreparedQuery query;
 		byte[] queryKey;
 
 		static readonly Encoding utf8 = new UTF8Encoding();

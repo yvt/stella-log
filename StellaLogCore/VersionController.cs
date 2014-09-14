@@ -125,19 +125,19 @@ namespace Yavit.StellaLog.Core
 		readonly StellaDB.Database db;
 
 		readonly StellaDB.Table branchTable;
-		readonly Func<byte[], StellaDB.Table.PreparedQuery> branchTableLookupQuery;
+		readonly Func<byte[], StellaDB.PreparedQuery> branchTableLookupQuery;
 
 		readonly StellaDB.Table revisionTable;
-		readonly Func<byte[], StellaDB.Table.PreparedQuery> revisionTableLookupQuery;
+		readonly Func<byte[], StellaDB.PreparedQuery> revisionTableLookupQuery;
 
 		readonly StellaDB.Table deltaTable;
-		readonly Func<byte[], byte[], long, StellaDB.Table.PreparedQuery> deltaTableLookupQuery;
-		readonly Func<byte[], StellaDB.Table.PreparedQuery> deltaTableFindByRevisionQuery;
+		readonly Func<byte[], byte[], long, StellaDB.PreparedQuery> deltaTableLookupQuery;
+		readonly Func<byte[], StellaDB.PreparedQuery> deltaTableFindByRevisionQuery;
 
 		readonly StellaDB.Table mergeTable;
-		readonly StellaDB.Table.PreparedQuery mergeTableEnumerateQuery;
-		readonly Func<byte[], long, StellaDB.Table.PreparedQuery> mergeTableLookupQuery;
-		readonly Func<byte[], StellaDB.Table.PreparedQuery> mergeTableFindByTableQuery;
+		readonly StellaDB.PreparedQuery mergeTableEnumerateQuery;
+		readonly Func<byte[], long, StellaDB.PreparedQuery> mergeTableLookupQuery;
+		readonly Func<byte[], StellaDB.PreparedQuery> mergeTableFindByTableQuery;
 
 		public event EventHandler<CheckoutEventArgs> Checkouting;
 		public event EventHandler<CheckoutEventArgs> Checkouted;
@@ -1579,13 +1579,13 @@ namespace Yavit.StellaLog.Core
 			return baseTable.Fetch(rowId);
 		}
 
-		public StellaDB.Table.PreparedQuery Prepare(
+		public StellaDB.PreparedQuery Prepare(
 			System.Linq.Expressions.Expression<Func<long, StellaDB.Ston.StonVariant, bool>> predicate)
 		{
 			return baseTable.Prepare (predicate);
 		}
 
-		public IEnumerable<StellaDB.Table.ResultRow> Query (StellaDB.Table.PreparedQuery stmt)
+		public IEnumerable<StellaDB.Table.ResultRow> Query (StellaDB.PreparedQuery stmt)
 		{
 			return baseTable.Query (stmt);
 		}

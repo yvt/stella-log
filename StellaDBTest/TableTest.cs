@@ -362,6 +362,40 @@ namespace Yavit.StellaDB.Test
 		{ QueryBinaryIndexedFilter((other, value) => false); }
 
 
+		void QueryTextTestValueFilter(string expr, object val, Func<int, bool> pred)
+		{
+			var db = Database.CreateMemoryDatabase ();
+			var table = db ["table"];
+
+			var items = Enumerable.Range (1, 100).ToArray();
+			foreach (var i in items) {
+				table.Insert (i, new TestClass() { Value = i }, false);
+			}
+
+			var stmt = table.Prepare (expr);
+			stmt ["param"] = val;
+			var result = (from e in table.Query (stmt)
+				select e.ToObject<TestClass> ().Value).ToArray();
+
+			var expected = items.Where (pred).ToArray();
+
+			Assert.That (result, Is.EquivalentTo (expected));
+		}
+
+		[Test] public void QueryTextTestValueFilter1([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` >= [param]", param, (v) => v >= param); }
+		[Test] public void QueryTextTestValueFilter2([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` <= [param]", param, (v) => v <= param); }
+		[Test] public void QueryTextTestValueFilter3([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` > [param]", param, (v) => v > param); }
+		[Test] public void QueryTextTestValueFilter4([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` < [param]", param, (v) => v < param); }
+		[Test] public void QueryTextTestValueFilter5([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` == [param]", param, (v) => v == param); }
+		[Test] public void QueryTextTestValueFilter6([Range(1, 100, 17)] int param)
+		{ QueryTextTestValueFilter("`Value` != [param]", param, (v) => v != param); }
+
+
 	}
 }
 

@@ -5,6 +5,21 @@ using System.Linq.Expressions;
 
 namespace Yavit.StellaDB
 {
+	public abstract class PreparedQuery: MarshalByRefObject
+	{
+		readonly internal Table table;
+		internal int TableStructureState;
+		internal Func<Indexer.QueryOptimizer.ProcessResult> PlanBuilder;
+
+		internal PreparedQuery(Table t)
+		{
+			this.table = t;
+		}
+
+		internal abstract Expression<Func<long, Ston.StonVariant, bool>> Predicate
+		{ get; }
+	}
+
 	public partial class Table
 	{
 		int tableStructureState = 0;
@@ -229,26 +244,41 @@ namespace Yavit.StellaDB
 			}
 		}
 
-		public sealed class PreparedQuery: MarshalByRefObject
+		sealed class BasicPreparedQuery: PreparedQuery
 		{
-			internal int TableStructureState;
-			internal Expression<Func<long, Ston.StonVariant, bool>> Predicate;
-			internal Func<Indexer.QueryOptimizer.ProcessResult> PlanBuilder;
-		}
+			readonly Expression<Func<long, Ston.StonVariant, bool>> predicate;
 
+			public BasicPreparedQuery(Table table, Expression<Func<long, Ston.StonVariant, bool>> predicate):
+			base(table)
+			{
+				this.predicate = predicate;
+			}
+			internal override Expression<Func<long, Yavit.StellaDB.Ston.StonVariant, bool>> Predicate {
+				get {
+					return predicate;
+				}
+			}
+		}
 		// TODO: sort
 		public PreparedQuery Prepare(Expression<Func<long, Ston.StonVariant, bool>> predicate)
 		{
 			EnsureQueryOptimizer ();
-			return new PreparedQuery () {
-				Predicate = predicate
-			};
+			return new BasicPreparedQuery (this, predicate);
+		}
+
+		public PreparedTextQuery Prepare(string expr)
+		{
+			EnsureQueryOptimizer ();
+			return new PreparedTextQuery (this, expr);
 		}
 
 		public IEnumerable<ResultRow> Query(PreparedQuery stmt)
 		{
 			if (stmt == null)
 				throw new ArgumentNullException ("stmt");
+
+			if (stmt.table != this)
+				throw new ArgumentException ("PreparedQuery cannot be used with the other table than onw which created PreparedQuery.", "stmt");
 
 			if (stmt.PlanBuilder == null ||
 				tableStructureState != stmt.TableStructureState) {
