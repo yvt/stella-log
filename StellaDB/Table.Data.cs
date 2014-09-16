@@ -272,6 +272,11 @@ namespace Yavit.StellaDB
 			return new PreparedTextQuery (this, expr);
 		}
 
+		public IEnumerable<ResultRow> Query(Expression<Func<long, Ston.StonVariant, bool>> predicate)
+		{
+			return Query(Prepare(predicate));
+		}
+
 		public IEnumerable<ResultRow> Query(PreparedQuery stmt)
 		{
 			if (stmt == null)
@@ -315,6 +320,16 @@ namespace Yavit.StellaDB
 			if (tableStructureState != state || store == null) {
 				throw new InvalidOperationException("Table structure was modified or a transaction was rollbacked.");
 			}
+		}
+
+		public IEnumerable<ResultRow> FetchAll()
+		{
+			if (store == null) {
+				return Enumerable.Empty<ResultRow> ();
+			}
+			return store.EnumerateEntiresInAscendingOrder()
+				.Select(entry => new ResultRow(this, 
+					DecodeRowIdForKey(entry.GetKey()), entry.ReadValue()));
 		}
 
 		IEnumerable<ResultRow> QueryByTableScan(int strState, Indexer.QueryOptimizer.RowIdUsage plan)
