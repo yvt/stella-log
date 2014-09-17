@@ -77,15 +77,21 @@ namespace Yavit.StellaLog.Core
 		{
 			readonly NestedTransactionManager manager;
 			State state = State.NotCommited;
+			object syncObject;
 
 			public NestedTransaction (NestedTransactionManager manager)
 			{
 				this.manager = manager;
+				syncObject = manager.database;
+				if (syncObject != null)
+					System.Threading.Monitor.Enter(syncObject);
 			}
 
 			public void Rollbacked()
 			{
 				state = State.Rollbacked;
+				if (syncObject != null)
+					System.Threading.Monitor.Exit(syncObject);
 			}
 
 			public void Commit ()
@@ -99,6 +105,8 @@ namespace Yavit.StellaLog.Core
 				}
 				manager.Commit (this);
 				state = State.Commited;
+				if (syncObject != null)
+					System.Threading.Monitor.Exit(manager.database);
 			}
 
 			public void Dispose ()
