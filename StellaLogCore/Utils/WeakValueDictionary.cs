@@ -20,18 +20,20 @@ namespace Yavit.StellaLog.Core.Utils
 
 		public bool TryGetValue(TKey key, out TValue value)
 		{
-			WeakReference r;
-			if (dic.TryGetValue(key, out r)) {
-				value = (TValue) r.Target;
-				var isAlive = r.IsAlive;
-				if (!isAlive) {
-					dic.Remove(key);
+			lock (dic) {
+				WeakReference r;
+				if (dic.TryGetValue (key, out r)) {
+					value = (TValue)r.Target;
+					var isAlive = r.IsAlive;
+					if (!isAlive) {
+						dic.Remove (key);
+					}
+					return isAlive;
+				} else {
+					value = default(TValue);
 				}
-				return isAlive;
-			} else {
-				value = default(TValue);
+				return false;
 			}
-			return false;
 		}
 
 		public void Add (TKey key, TValue value)
@@ -40,28 +42,35 @@ namespace Yavit.StellaLog.Core.Utils
 				throw new ArgumentNullException ("value");
 			}
 
-			WeakReference r;
-			if (dic.TryGetValue(key, out r)) {
-				if (r.IsAlive) {
-					throw new ArgumentException ("Duplicate key.", "key");
-				}
-				dic [key] = new WeakReference(value);
-				return;
-			}
+			lock (dic) {
 
-			dic.Add (key, new WeakReference (value));
+				WeakReference r;
+				if (dic.TryGetValue (key, out r)) {
+					if (r.IsAlive) {
+						throw new ArgumentException ("Duplicate key.", "key");
+					}
+					dic [key] = new WeakReference (value);
+					return;
+				}
+
+				dic.Add (key, new WeakReference (value));
+			}
 		}
 		public bool ContainsKey (TKey key)
 		{
-			WeakReference r;
-			if (dic.TryGetValue(key, out r)) {
-				return r.IsAlive;
+			lock (dic) {
+				WeakReference r;
+				if (dic.TryGetValue (key, out r)) {
+					return r.IsAlive;
+				}
+				return false;
 			}
-			return false;
 		}
 		public bool Remove (TKey key)
 		{
-			return dic.Remove (key);
+			lock (dic) {
+				return dic.Remove (key);
+			}
 		}
 		public TValue this [TKey index] {
 			get {
@@ -176,7 +185,8 @@ namespace Yavit.StellaLog.Core.Utils
 		}
 		public void Clear ()
 		{
-			dic.Clear ();
+			lock (dic)
+				dic.Clear ();
 		}
 		public bool Contains (KeyValuePair<TKey, TValue> item)
 		{
@@ -221,17 +231,21 @@ namespace Yavit.StellaLog.Core.Utils
 		}
 		public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator ()
 		{
-			var wasted = new List<TKey> ();
-			foreach (var e in dic) {
-				var v = e.Value.Target;
-				if (e.Value.IsAlive) {
-					yield return new KeyValuePair<TKey, TValue> (e.Key, (TValue)v);
-				} else {
-					wasted.Add (e.Key);
+			lock (dic) {
+				var ret = new List<KeyValuePair<TKey, TValue>> ();
+				var wasted = new List<TKey> ();
+				foreach (var e in dic) {
+					var v = e.Value.Target;
+					if (e.Value.IsAlive) {
+						ret.Add(new KeyValuePair<TKey, TValue> (e.Key, (TValue)v));
+					} else {
+						wasted.Add (e.Key);
+					}
 				}
-			}
-			foreach(var k in wasted) {
-				dic.Remove (k);
+				foreach (var k in wasted) {
+					dic.Remove (k);
+				}
+				return ret.GetEnumerator ();
 			}
 		}
 		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator ()

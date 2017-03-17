@@ -17,16 +17,21 @@ namespace Yavit.StellaLog.Core
 		{
 			if (manager == null)
 				throw new ArgumentNullException ("manager");
-			this.manager = manager;
-			this.attributes = new object[manager.AttributeCount];
 
-			this.Time = DateTime.UtcNow;
+			lock (manager.sync) {
+				this.manager = manager;
+				this.attributes = new object[manager.AttributeCount];
+
+				this.Time = DateTime.UtcNow;
+			}
 		}
 
 		~Record()
 		{
 			if (recordId != null) {
-				manager.recordCache.Remove ((long)recordId);
+				lock (manager.sync) {
+					manager.recordCache.Remove ((long)recordId);
+				}
 			}
 		}
 
@@ -49,14 +54,19 @@ namespace Yavit.StellaLog.Core
 
 		public long? RecordId
 		{
-			get { return recordId; }
-			internal set { 
-				if (recordId != null) {
-					manager.recordCache.Remove ((long)recordId);
-				}
-				recordId = value;
-				if (recordId != null) {
-					manager.recordCache.Add ((long)recordId, this);
+			get { 
+				lock (manager.sync)
+					return recordId;
+			}
+			internal set {
+				lock (manager.sync) {
+					if (recordId != null) {
+						manager.recordCache.Remove ((long)recordId);
+					}
+					recordId = value;
+					if (recordId != null) {
+						manager.recordCache.Add ((long)recordId, this);
+					}
 				}
 			}
 		}
@@ -70,82 +80,92 @@ namespace Yavit.StellaLog.Core
 
 		public void Save()
 		{
-			ReloadIfNeeded ();
-			using (var t = manager.book.BeginTransaction ()) {
-				if (recordId == null) {
-					try {
-						recordId = GenerateRecordId ();
-						manager.currentUpdatingRecordId = recordId;
-						manager.table.Update ((long)recordId, this);
-					} catch {
-						recordId = null;
-						throw;
-					} finally {
-						manager.currentUpdatingRecordId = null;
+			lock (manager.sync) {
+				ReloadIfNeeded ();
+				using (var t = manager.book.BeginTransaction ()) {
+					if (recordId == null) {
+						try {
+							recordId = GenerateRecordId ();
+							manager.currentUpdatingRecordId = recordId;
+							manager.table.Update ((long)recordId, this);
+						} catch {
+							recordId = null;
+							throw;
+						} finally {
+							manager.currentUpdatingRecordId = null;
+						}
+					} else {
+						try {
+							manager.currentUpdatingRecordId = recordId;
+							manager.table.Update ((long)recordId, this);
+						} finally {
+							manager.currentUpdatingRecordId = null;
+						}
 					}
-				} else {
-					try {
-						manager.currentUpdatingRecordId = recordId;
-						manager.table.Update ((long)recordId, this);
-					} finally {
-						manager.currentUpdatingRecordId = null;
-					}
+					t.Commit ();
 				}
-				t.Commit ();
+				needsReload = false;
 			}
-			needsReload = false;
 		}
 
 		public object this [string attributeName] 
 		{
 			get {
-				ReloadIfNeeded ();
-				var index = manager.GetAttributeIndex (attributeName);
-				if (index.HasValue) {
-					var i = index.Value;
-					if (i < attributes.Length)
-						return attributes [i];
+				lock (manager.sync) {
+					ReloadIfNeeded ();
+					var index = manager.GetAttributeIndex (attributeName);
+					if (index.HasValue) {
+						var i = index.Value;
+						if (i < attributes.Length)
+							return attributes [i];
+					}
+					return null;
 				}
-				return null;
 			}
 			set {
-				ReloadIfNeeded ();
-				var index = manager.EnsureAttributeIndex (attributeName);
-				if (index >= attributes.Length) {
-					if (value == null) {
-						return;
+				lock (manager.sync) {
+					ReloadIfNeeded ();
+					var index = manager.EnsureAttributeIndex (attributeName);
+					if (index >= attributes.Length) {
+						if (value == null) {
+							return;
+						}
+						Array.Resize (ref attributes, index + 1);
 					}
-					Array.Resize (ref attributes, index + 1);
+					attributes [index] = value;
 				}
-				attributes [index] = value;
 			}
 		}
 
 		public object this [int attributeIndex]
 		{
 			get {
-				if (attributeIndex >= manager.AttributeCount ||
-					attributeIndex < 0)
-					throw new ArgumentOutOfRangeException ("attributeIndex");
-				ReloadIfNeeded ();
+				lock (manager.sync) {
+					if (attributeIndex >= manager.AttributeCount ||
+					   attributeIndex < 0)
+						throw new ArgumentOutOfRangeException ("attributeIndex");
+					ReloadIfNeeded ();
 
-				if (attributeIndex < attributes.Length)
-					return attributes [attributeIndex];
-				return null;
+					if (attributeIndex < attributes.Length)
+						return attributes [attributeIndex];
+					return null;
+				}
 			}
 			set {
-				if (attributeIndex >= manager.AttributeCount ||
-				    attributeIndex < 0)
-					throw new ArgumentOutOfRangeException ("attributeIndex");
-				ReloadIfNeeded ();
+				lock (manager.sync) {
+					if (attributeIndex >= manager.AttributeCount ||
+					   attributeIndex < 0)
+						throw new ArgumentOutOfRangeException ("attributeIndex");
+					ReloadIfNeeded ();
 
-				if (attributeIndex >= attributes.Length) {
-					if (value == null) {
-						return;
+					if (attributeIndex >= attributes.Length) {
+						if (value == null) {
+							return;
+						}
+						Array.Resize (ref attributes, attributeIndex + 1);
 					}
-					Array.Resize (ref attributes, attributeIndex + 1);
+					attributes [attributeIndex] = value;
 				}
-				attributes [attributeIndex] = value;
 			}
 		}
 
@@ -216,9 +236,11 @@ namespace Yavit.StellaLog.Core
 
 		void ICollection<KeyValuePair<string, object>>.Clear ()
 		{
-			ReloadIfNeeded ();
-			for (int i = 0; i < attributes.Length; ++i)
-				attributes [i] = null;
+			lock (manager.sync) {
+				ReloadIfNeeded ();
+				for (int i = 0; i < attributes.Length; ++i)
+					attributes [i] = null;
+			}
 		}
 
 		bool ICollection<KeyValuePair<string, object>>.Contains (KeyValuePair<string, object> item)
@@ -241,8 +263,10 @@ namespace Yavit.StellaLog.Core
 
 		int ICollection<KeyValuePair<string, object>>.Count {
 			get {
-				ReloadIfNeeded ();
-				return attributes.Count (e => e != null);
+				lock (manager.sync) {
+					ReloadIfNeeded ();
+					return attributes.Count (e => e != null);
+				}
 			}
 		}
 

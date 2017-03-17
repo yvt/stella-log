@@ -13,6 +13,8 @@ namespace Yavit.StellaLog.Core
 
 		readonly StellaDB.Ston.StonSerializer ston;
 
+		readonly internal object sync = new object();
+
 		internal readonly Utils.WeakValueDictionary<long, Record> recordCache =
 			new Yavit.StellaLog.Core.Utils.WeakValueDictionary<long, Record>();
 
@@ -32,15 +34,17 @@ namespace Yavit.StellaLog.Core
 			table.BaseTable.Serializer = ston;
 
 			table.Updated += (sender, e) => {
-				Record r;
-				if (currentUpdatingRecordId == e.RowId) {
-					return;
-				}
-				if (recordCache.TryGetValue(e.RowId, out r)) {
-					r.needsReload = true;
-					if (e.newValue.Length == 0) {
-						// Deleted.
-						r.RecordId = null;
+				lock (sync) {
+					Record r;
+					if (currentUpdatingRecordId == e.RowId) {
+						return;
+					}
+					if (recordCache.TryGetValue(e.RowId, out r)) {
+						r.needsReload = true;
+						if (e.newValue.Length == 0) {
+							// Deleted.
+							r.RecordId = null;
+						}
 					}
 				}
 			};
@@ -53,52 +57,64 @@ namespace Yavit.StellaLog.Core
 
 		public int AttributeCount
 		{
-			get { return attributes.Count; }
+			get { 
+				lock (sync) {
+					return attributes.Count;
+				}
+			}
 		}
 
 		public int? GetAttributeIndex(string name)
 		{
-			int index;
-			if (attributeMap.TryGetValue(name, out index)) {
-				return index;
+			lock (sync) {
+				int index;
+				if (attributeMap.TryGetValue(name, out index)) {
+					return index;
+				}
+				return null;
 			}
-			return null;
 		}
 
 		public int EnsureAttributeIndex(string name)
 		{
-			int index;
-			if (attributeMap.TryGetValue(name, out index)) {
-				return index;
-			} else {
-				index = attributes.Count;
-				attributes.Add (name);
-				attributeMap.Add (name, index);
-				return index;
+			lock (sync) {
+				int index;
+				if (attributeMap.TryGetValue (name, out index)) {
+					return index;
+				} else {
+					index = attributes.Count;
+					attributes.Add (name);
+					attributeMap.Add (name, index);
+					return index;
+				}
 			}
 		}
 
 		public string GetAttributeName(int index)
 		{
-			return attributes[index];
+			lock (sync) {
+				return attributes [index];
+			}
 		}
 
 		public Record Fetch(long recordId)
 		{
-			Record r;
-			if (recordCache.TryGetValue(recordId, out r)) {
+			lock (sync) {
+				Record r;
+				if (recordCache.TryGetValue (recordId, out r)) {
+					return r;
+				}
+
+				// Read from the database
+				var ret = table.Fetch (recordId);
+				if (ret == null) {
+					return null;
+				}
+
+				r = ret.ToObject<Record> ();
+				r.RecordId = recordId;
 				return r;
 			}
-
-			// Read from the database
-			var ret = table.Fetch (recordId);
-			if (ret == null) {
-				return null;
-			}
-
-			r = ret.ToObject<Record> ();
-			r.RecordId = recordId;
-			return r;
 		}
 
 		public Record CreateRecord()
